@@ -96,7 +96,7 @@ output "Splunk_Instance_Name" {
   value = aws_instance.splunk_serverr.tags["Name"]
 }
 output "Splunk_Public_IP" {
-  value = aws_instance.splunk_serverr.public_ip
+  value = "${aws_eip.splunk_eip.public_ip}"
 }
 output "Splunk_Private_IP" {
   value = aws_instance.splunk_serverr.private_ip
@@ -109,6 +109,12 @@ output "Instance_State" {
 }
 output "Splunk_SSH_String" {
   value = "ssh -i ${var.key_name}.pem ec2-user@${aws_eip.splunk_eip.public_dns}"
+}
+output "Splunk_Password" {
+  value = "SPLUNK-${aws_instance.splunk_serverr.id}"
+}
+output "Splunk_username" {
+  value = "admin"
 }
 
 
