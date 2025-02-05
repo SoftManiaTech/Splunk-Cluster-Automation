@@ -31,7 +31,8 @@ resource "aws_eip" "splunk_eip" {
 
 
 resource "aws_security_group" "splunk_serverr" {
-  name_prefix = "splunk-group"
+  name_prefix = "splunk-sg"
+
 
   ingress {
     from_port = 22
@@ -44,6 +45,41 @@ resource "aws_security_group" "splunk_serverr" {
     from_port = 8000
     to_port  = 8000
     protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port = 8089
+    to_port  = 8089
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port = 554
+    to_port  = 554
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port = 443
+    to_port  = 443
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port = 9997
+    to_port  = 9997
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port = 0
+    to_port  = 0
+    protocol = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
