@@ -1,0 +1,1 @@
+# SoftMania_Terraform_Operator_Splunk
