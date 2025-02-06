@@ -99,14 +99,18 @@ resource "aws_security_group" "splunk_server_sg" {
   }
 }
 
-
+variable "instance_type" {
+    type = string
+    description = "Enter the instance type for Splunk servers (Default: t2.medium)"
+    default = "t2.medium"
+}
 
 
 # Splunk instances
 resource "aws_instance" "splunk_server" {
   count = var.instance_count
   ami           = var.splunk_ami_id
-  instance_type = "t2.medium"
+  instance_type = var.instance_type
   key_name = var.key_name
   vpc_security_group_ids = [aws_security_group.splunk_server_sg[count.index].id]
   associate_public_ip_address = !var.elastic_ips_needed
@@ -119,6 +123,7 @@ resource "aws_instance" "splunk_server" {
     Name = var.instance_names[count.index] # Use the provided names list
   }
 }
+
 
 # Elastic IPs (only if needed)
 resource "aws_eip" "splunk_eip" {
@@ -134,19 +139,31 @@ output "splunk_instance_names" {
 }
 
 output "splunk_public_ips" {
-  value = var.elastic_ips_needed ? aws_eip.splunk_eip[*].public_ip : aws_instance.splunk_server[*].public_ip
+  value = { 
+    for idx, instance in aws_instance.splunk_server[*] :
+    instance.tags["Name"] => var.elastic_ips_needed ? aws_eip.splunk_eip[idx].public_ip : instance.public_ip
+  }
 }
 
 output "splunk_private_ips" {
-  value = aws_instance.splunk_server[*].private_ip
+  value = {
+    for idx, instance in aws_instance.splunk_server[*] : 
+    instance.tags["Name"] => instance.private_ip
+  }
 }
 
 output "instance_states" {
-  value = aws_instance.splunk_server[*].instance_state
+  value = {
+    for idx, instance in aws_instance.splunk_server[*] : 
+    instance.tags["Name"] => instance.instance_state
+  }
 }
 
 output "splunk_ssh_strings" {
-  value = [for i in aws_instance.splunk_server[*]: "ssh -i ${var.key_name}.pem ec2-user@${i.public_dns}"]
+  value ={
+    for idx, instance in aws_instance.splunk_server[*] :
+    instance.tags["Name"] => "ssh -i ${var.key_name}.pem ec2-user@${instance.public_dns}"
+  } 
 }
 
 output "splunk_passwords" {

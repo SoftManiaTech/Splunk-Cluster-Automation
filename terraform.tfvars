@@ -16,3 +16,4 @@ security_group_rules = [
 ]
 
 storage_size = 30
+instance_type = "t2.large"
