@@ -41,7 +41,9 @@ aws configure
   AWS ACCESS Key ID [None]: <Your-Access-key>
   AWS Secret Access Key [None]: <You-secret-access-key>
   Default region name [None]: <frequently-using-region-name>
-  Default output format [None]: <click-enter>
+  Default output format [None]: <click-enter> 
+
+```
 
 ---
 
