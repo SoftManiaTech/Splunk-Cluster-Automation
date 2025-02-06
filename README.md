@@ -44,11 +44,17 @@ aws configure
   Default output format [None]: <click-enter> 
 
 ```
+---
+
+## Before using this automation to create a Splunk Enterprise instance, you must first subscribe to Splunk Enterprise on the AWS Marketplace.
+
+Additionally, ensure that you have sufficient AWS credits and follow these guidelines:
+
+**Instance Count:** Must be below `8`.
+- If you are using between 6 to 8 instances, do not add an Elastic IP.
 
 ---
 
-- redhat AWS EC2 AMI https://access.redhat.com/solutions/15356#us_east_1
-- Ubuntu AWS EC2 AMI https://cloud-images.ubuntu.com/locator/ec2/
 
 ## Splunk AMI - (latest version)
 
@@ -70,3 +76,6 @@ splunk enterprise version of ami findout here: https://aws.amazon.com/marketplac
 - eu-west-2 (London) - ami-0b6374030d6461abe
 - eu-west-3 (Paris) - ami-0265048c92cbd07fa
 - eu-north-1 (Stockholm) - ami-084f0bd811ba09257
+
+- redhat AWS EC2 AMI https://access.redhat.com/solutions/15356#us_east_1
+- Ubuntu AWS EC2 AMI https://cloud-images.ubuntu.com/locator/ec2/
