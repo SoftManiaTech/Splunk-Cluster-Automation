@@ -1,12 +1,12 @@
-region = "us-east-2"
+region = "us-east-1"
 
 instances = [
   {
     name              = "ClusterManager"
-    region            = "us-east-2"
-    instance_type     = "t2.xlarge"
-    storage_size      = 50
-    key_name          = "fastapi"
+    region            = "us-east-1"
+    instance_type     = "t2.medium"
+    storage_size      = 30
+    key_name          = "terraform"
     elastic_ip_needed = true
     security_group_rules = [
         { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] },
@@ -19,10 +19,10 @@ instances = [
   }, 
   {
     name              = "idx-1"
-    region            = "us-east-2"
+    region            = "us-east-1"
     instance_type     = "t2.medium"
     storage_size      = 30
-    key_name          = "fastapi"
+    key_name          = "terraform"
     elastic_ip_needed = true
     security_group_rules = [
         { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] },
@@ -32,10 +32,10 @@ instances = [
   },
   {
     name              = "idx-2"
-    region            = "us-east-2"
-    instance_type     = "t2.large"
-    storage_size      = 100
-    key_name          = "fastapi"
+    region            = "us-east-1"
+    instance_type     = "t2.medium"
+    storage_size      = 30
+    key_name          = "terraform"
     elastic_ip_needed = false
     security_group_rules = [
         { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] },
@@ -45,10 +45,10 @@ instances = [
   },
   {
     name              = "idx-3"
-    region            = "us-east-2"
+    region            = "us-east-1"
     instance_type     = "t2.medium"
     storage_size      = 30
-    key_name          = "fastapi"
+    key_name          = "terraform"
     elastic_ip_needed = true
     security_group_rules = [
         { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] },
@@ -61,10 +61,10 @@ instances = [
   },
   {
     name              = "idx-4"
-    region            = "us-east-2"
+    region            = "us-east-1"
     instance_type     = "t2.medium"
     storage_size      = 30
-    key_name          = "fastapi"
+    key_name          = "terraform"
     elastic_ip_needed = true
     security_group_rules = [
         { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] },
@@ -74,10 +74,10 @@ instances = [
   },
   {
     name              = "idx-5"
-    region            = "us-east-2"
+    region            = "us-east-1"
     instance_type     = "t2.medium"
     storage_size      = 30
-    key_name          = "fastapi"
+    key_name          = "terraform"
     elastic_ip_needed = true
     security_group_rules = [
         { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] },
@@ -87,10 +87,10 @@ instances = [
   },
   {
     name              = "idx-6"
-    region            = "us-east-2"
+    region            = "us-east-1"
     instance_type     = "t2.medium"
     storage_size      = 30
-    key_name          = "fastapi"
+    key_name          = "terraform"
     elastic_ip_needed = false
     security_group_rules = [
         { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] },
@@ -100,10 +100,10 @@ instances = [
   },
   {
     name              = "idx-7"
-    region            = "us-east-2"
+    region            = "us-east-1"
     instance_type     = "t2.medium"
     storage_size      = 30
-    key_name          = "fastapi"
+    key_name          = "terraform"
     elastic_ip_needed = false
     security_group_rules = [
         { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] },
@@ -113,10 +113,10 @@ instances = [
   },
   {
     name              = "idx-8"
-    region            = "us-east-2"
+    region            = "us-east-1"
     instance_type     = "t2.medium"
     storage_size      = 30
-    key_name          = "fastapi"
+    key_name          = "terraform"
     elastic_ip_needed = false
     security_group_rules = [
         { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] },
@@ -126,10 +126,10 @@ instances = [
   },
   {
     name              = "idx-9"
-    region            = "us-east-2"
+    region            = "us-east-1"
     instance_type     = "t2.medium"
     storage_size      = 30
-    key_name          = "fastapi"
+    key_name          = "terraform"
     elastic_ip_needed = false
     security_group_rules = [
         { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] },
@@ -139,10 +139,10 @@ instances = [
   },
   {
     name              = "idx-10"
-    region            = "us-east-2"
+    region            = "us-east-1"
     instance_type     = "t2.medium"
     storage_size      = 30
-    key_name          = "fastapi"
+    key_name          = "terraform"
     elastic_ip_needed = false
     security_group_rules = [
         { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] },

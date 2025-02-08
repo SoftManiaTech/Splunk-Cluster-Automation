@@ -1,4 +1,5 @@
 terraform {
+  
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -106,6 +107,27 @@ resource "aws_instance" "splunk_server" {
   tags = {
     Name = each.value.name
   }
+
+   user_data = <<-EOF
+              #!/bin/bash
+              echo "Accepting Splunk Terms & Conditions"
+              echo "yes" | /opt/splunk/bin/splunk start --accept-license
+              EOF
+
+  provisioner "remote-exec" {
+    connection {
+      type = "ssh"
+      user = "ec2-user"
+      private_key = file("${each.value.key_name}.pem")
+      host = self.public_ip
+    }
+
+    inline = [
+      "sleep 150",
+      "sudo su - splunk -c '/opt/splunk/bin/splunk edit user admin -password admin123 -role admin -auth admin:SPLUNK-${self.id}'"
+    ]
+  }
+  
 }
 
 
