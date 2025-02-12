@@ -89,6 +89,11 @@ resource "aws_security_group" "splunk_sg" {
   }
 }
 
+variable "instance_commands" {
+  type = map(list(string))
+   description = "Commands to execute on each instance"
+}
+
 # Splunk instances
 resource "aws_instance" "splunk_server" {
   for_each = { for idx, instance in var.instances : idx => instance }
@@ -123,9 +128,20 @@ resource "aws_instance" "splunk_server" {
     }
 
     inline = [
-      "sleep 150",
+      "sleep 145",
       "sudo su - splunk -c '/opt/splunk/bin/splunk edit user admin -password admin123 -role admin -auth admin:SPLUNK-${self.id}'"
     ]
+  }
+
+  provisioner "remote-exec" {
+    connection {
+      type = "ssh"
+      user = "ec2-user"
+      private_key = file("${each.value.key_name}.pem")
+      host = self.public_ip
+    }
+
+    inline = lookup(var.instance_commands, each.value.name, ["echo 'No custom commands for this instance'"])
   }
   
 }
