@@ -1,19 +1,5 @@
 region = "us-east-1"
 
-instance_commands = {
-  "ClusterManager" =[
-    "sleep 40",
-    "sudo su - splunk",
-    "/opt/splunk/bin/splunk edit cluster-config -mode manager -replication_factor 3 -search_factor 2 -secret YOUR_KEY -cluster_label cluster1 -auth admin:admin123",
-    "/opt/splunk/bin/splunk restart"
-  ],
-  "idx-1" = [
-    "sudo su - splunk",
-    "/opt/splunk/bin/splunk edit cluster-config -mode peer -manager_uri https://YOUR_CLUSTER_MANAGER_IP:8089 -replication_port 9887 -secret YOUR_KEY -auth admin:admin123",
-    "/opt/splunk/bin/splunk restart"
-  ]
-}
-
 instances = [
   {
     name              = "ClusterManager"

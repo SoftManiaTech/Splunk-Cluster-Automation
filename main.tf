@@ -89,11 +89,6 @@ resource "aws_security_group" "splunk_sg" {
   }
 }
 
-variable "instance_commands" {
-  type = map(list(string))
-   description = "Commands to execute on each instance"
-}
-
 # Splunk instances
 resource "aws_instance" "splunk_server" {
   for_each = { for idx, instance in var.instances : idx => instance }
@@ -131,17 +126,6 @@ resource "aws_instance" "splunk_server" {
       "sleep 145",
       "sudo su - splunk -c '/opt/splunk/bin/splunk edit user admin -password admin123 -role admin -auth admin:SPLUNK-${self.id}'"
     ]
-  }
-
-  provisioner "remote-exec" {
-    connection {
-      type = "ssh"
-      user = "ec2-user"
-      private_key = file("${each.value.key_name}.pem")
-      host = self.public_ip
-    }
-
-    inline = lookup(var.instance_commands, each.value.name, ["echo 'No custom commands for this instance'"])
   }
   
 }
@@ -185,11 +169,13 @@ output "instance_states" {
 }
 
 output "splunk_ssh_strings" {
-  value ={
+  value = {
     for idx, instance in aws_instance.splunk_server :
-    instance.tags["Name"] => "ssh -i ${var.instances[idx].key_name}.pem ec2-user@${instance.public_dns}"
-  } 
+    instance.tags["Name"] => "ssh -i ${var.instances[idx].key_name}.pem ec2-user@${lookup(aws_eip.splunk_eip, idx, { public_ip = instance.public_ip }).public_ip}"
+  }
 }
+
+
 
 output "splunk_passwords" {
   value = {

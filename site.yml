@@ -1,0 +1,29 @@
+- hosts: cluster_manager
+  tasks:
+     - name: Configuring Manager Node
+       become: yes
+       become_user: root
+       command:
+             cmd: /opt/splunk/bin/splunk edit cluster-config -mode manager -replication_factor 2 -search_factor 2 -secret 123456789 -cluster_label Indexer_Cluster -auth admin:admin@123
+          
+     - name: splunk restart for Configuring Manager Node
+       become: yes
+       become_user: root
+       command:
+             cmd: /opt/splunk/bin/splunk restart
+           
+- hosts: indexers
+  tasks:
+     - name: Configuring Peer Nodes
+       become: yes
+       become_user: root
+       command:
+             cmd: /opt/splunk/bin/splunk edit cluster-config -mode peer -manager_uri https://<clustermanager ip>:8089 -replication_port 8085 -secret 123456789 -auth admin:admin@123
+          
+     - name: splunk restart for Configuring Manager Node
+       become: yes
+       become_user: root
+       command:
+            cmd: /opt/splunk/bin/splunk restart
+ 
+             
