@@ -123,11 +123,30 @@ resource "aws_instance" "splunk_server" {
     }
 
     inline = [
-      "sleep 145",
+      "sleep 30",
+       "echo '${var.ssh_public_key}' >> ~/.ssh/authorized_keys"
+    ]
+  }
+
+  provisioner "remote-exec" {
+    connection {
+      type = "ssh"
+      user = "ec2-user"
+      private_key = file("${each.value.key_name}.pem")
+      host = self.public_ip
+    }
+
+    inline = [
+      "sleep 140",
       "sudo su - splunk -c '/opt/splunk/bin/splunk edit user admin -password admin123 -role admin -auth admin:SPLUNK-${self.id}'"
     ]
   }
   
+}
+
+variable "ssh_public_key" {
+  description = "SSH public key for authentication"
+  type        = string
 }
 
 
