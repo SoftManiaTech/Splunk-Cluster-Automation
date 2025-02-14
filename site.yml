@@ -4,7 +4,7 @@
        become: yes
        become_user: root
        command:
-             cmd: /opt/splunk/bin/splunk edit cluster-config -mode manager -replication_factor 2 -search_factor 2 -secret YOUR_KEY -cluster_label Indexer_Cluster -auth admin:admin123
+             cmd: /opt/splunk/bin/splunk edit cluster-config -mode manager -replication_factor 2 -search_factor 2 -secret SoftManiaKey -cluster_label Indexer_Cluster -auth admin:admin123
           
      - name: splunk restart for Configuring Manager Node
        become: yes
@@ -18,7 +18,7 @@
        become: yes
        become_user: root
        command:
-             cmd: /opt/splunk/bin/splunk edit cluster-config -mode peer -manager_uri https://YOUR_CLUSTER_MANAGER_IP:8089 -replication_port 9887 -secret YOUR_KEY -auth admin:admin123
+             cmd: /opt/splunk/bin/splunk edit cluster-config -mode peer -manager_uri https://{{ ClusterManager.ansible_host}}:8089 -replication_port 9887 -secret SoftManiaKey -auth admin:admin123
           
      - name: splunk restart for Configuring Manager Node
        become: yes
@@ -52,7 +52,7 @@
   tasks:
       
     - name: configure search peer 
-      command: /opt/splunk/bin/splunk init shcluster-config -auth admin:admin@123 -mgmt_uri https://YOUR_SH1_IP:8089 -replication_port 9000 -replication_factor 3 -conf_deploy_fetch_url http://YOUR_DEPLOYER_IP:8089 -secret SoftManiaSHClusterKey -shcluster_label shcluster1
+      command: /opt/splunk/bin/splunk init shcluster-config -auth admin:admin123 -mgmt_uri https://{{ search_heads.SH1.ansible_host }}:8089 -replication_port 9000 -replication_factor 3 -conf_deploy_fetch_url http://{{ Deployer.ansible_host }}:8089 -secret SoftManiaSHClusterKey -shcluster_label shcluster1
 
     - name: restart splunk
       command: /opt/splunk/bin/splunk restart
@@ -65,7 +65,7 @@
   tasks:
       
     - name: configure search peer 
-      command: /opt/splunk/bin/splunk init shcluster-config -auth admin:admin123 -mgmt_uri https://YOUR_SH2_IP:8089 -replication_port 9000 -replication_factor 3 -conf_deploy_fetch_url http://YOUR_DEPLOYER_IP:8089 -secret SoftManiaSHClusterKey -shcluster_label shcluster1
+      command: /opt/splunk/bin/splunk init shcluster-config -auth admin:admin123 -mgmt_uri https://{{ search_heads.SH2.ansible_host }}:8089 -replication_port 9000 -replication_factor 3 -conf_deploy_fetch_url http://{{ Deployer.ansible_host }}:8089 -secret SoftManiaSHClusterKey -shcluster_label shcluster1
 
     - name: restart splunk
       command: /opt/splunk/bin/splunk restart
@@ -78,7 +78,7 @@
   tasks:
       
     - name: configure search peer 
-      command: /opt/splunk/bin/splunk init shcluster-config -auth admin:admin123 -mgmt_uri https://YOUR_SH3_IP:8089 -replication_port 9000 -replication_factor 3 -conf_deploy_fetch_url http://YOUR_DEPLOYER_IP:8089 -secret SoftManiaSHClusterKey -shcluster_label shcluster1
+      command: /opt/splunk/bin/splunk init shcluster-config -auth admin:admin123 -mgmt_uri https://{{ search_heads.SH3.ansible_host }}:8089 -replication_port 9000 -replication_factor 3 -conf_deploy_fetch_url http://{{ Deployer.ansible_host }}:8089 -secret SoftManiaSHClusterKey -shcluster_label shcluster1
 
     - name: restart splunk
       command: /opt/splunk/bin/splunk restart
@@ -91,12 +91,12 @@
 
   tasks:
     - name: Making cluster captain
-      command: /opt/splunk/bin/splunk bootstrap shcluster-captain -servers_list "https://YOUR_SH1_IP:8089,https://YOUR_SH2_IP:8089,https://YOUR_SH3_IP:8089" -auth admin:admin123
+      command: /opt/splunk/bin/splunk bootstrap shcluster-captain -servers_list "https://{{ search_heads.SH1.ansible_host }}:8089,https://{{ search_heads.SH2.ansible_host }}:8089,https://{{ search_heads.SH3.ansible_host }}:8089" -auth admin:admin123
 
 - hosts: IFs
   tasks:
     - name: Configure Intermediate Forwarders
-      command: /opt/splunk/bin/splunk set deploy-poll YOUR_DEPLOYMENT_SERVER_IP:8089
+      command: /opt/splunk/bin/splunk set deploy-poll {{ Deployment-Server.ansible_host }}:8089
     
     - name: restart splunk
       command: /opt/splunk/bin/splunk restart
@@ -109,7 +109,7 @@
 
   tasks:
     - name: configure indexer cluster with search head 
-      command : /opt/splunk/bin/splunk edit cluster-config -mode searchhead -manager_uri https://YOUR_CLUSTER_MANAGER_IP:8089 -secret YOUR_INDEXER_CLUSTER_SECRET_KEY -auth admin:admin123
+      command : /opt/splunk/bin/splunk edit cluster-config -mode searchhead -manager_uri https://{{ ClusterManager.ansible_host }}:8089 -secret SoftManiaKey -auth admin:admin123
 
     - name: restart splunk
       command: /opt/splunk/bin/splunk restart

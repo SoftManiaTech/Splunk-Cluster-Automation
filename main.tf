@@ -191,6 +191,20 @@ resource "local_file" "ansible_inventory" {
 }
 
 
+resource "local_file" "ansible_group_vars" {
+  filename = "group_vars/all.yml"
+
+  content = templatefile("${path.module}/group_vars_template.yml", {
+    cluster_manager    = [for instance in aws_instance.splunk_server : instance.private_ip if instance.tags["Name"] == "ClusterManager"]
+    indexers          = { for instance in aws_instance.splunk_server : instance.tags["Name"] => instance.private_ip if startswith(instance.tags["Name"], "idx") }
+    search_heads      = { for instance in aws_instance.splunk_server : instance.tags["Name"] => instance.private_ip if startswith(instance.tags["Name"], "SH") }
+    deployment_server = [for instance in aws_instance.splunk_server : instance.private_ip if instance.tags["Name"] == "Deployment-Server"]
+    license_server    = [for instance in aws_instance.splunk_server : instance.private_ip if instance.tags["Name"] == "License-Server"]
+    deployer          = [for instance in aws_instance.splunk_server : instance.private_ip if instance.tags["Name"] == "Deployer"]
+    ifs              = { for instance in aws_instance.splunk_server : instance.tags["Name"] => instance.private_ip if startswith(instance.tags["Name"], "IF") }
+  })
+}
+
 
 
 variable "ssh_public_key" {
