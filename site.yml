@@ -114,3 +114,175 @@
     - name: restart splunk
       command: /opt/splunk/bin/splunk restart
 
+
+
+
+
+- hosts: ClusterManager
+  tasks:
+    - name: Connect Forwarders with Indexer Cluster
+      become: yes
+      become_user: splunk
+      copy: 
+         dest: /opt/splunk/etc/system/local/server.conf
+         content: |
+            [indexer_discovery]
+            pass4SymmKey = SoftManiaSHClusterKey
+            polling_rate = 10
+            indexerWeightByDiskCapacity = true
+    - name: restart
+      become: yes
+      become_user: root
+      command:
+            cmd: /opt/splunk/bin/splunk restart
+ 
+
+- name: Configure Splunk Deployment Apps
+  hosts: Deployment-Server
+  become: yes
+  become_user: splunk
+  tasks:
+    - name: Ensure directory structure exists
+      file:
+        path: "/opt/splunk/etc/deployment-apps/ORG_general_infra_config/local"
+        state: directory
+        mode: '0755'
+
+    - name: Create outputs.conf file
+      copy:
+        dest: "/opt/splunk/etc/deployment-apps/ORG_general_infra_config/local/outputs.conf"
+        content: |
+          [indexer_discovery:manager1]
+          pass4SymmKey = SoftManiaSHClusterKey
+          manager_uri = https://{{ ClusterManager.ansible_host }}:8089
+
+          [tcpout:group1]
+          autoLBFrequency = 30
+          forceTimebasedAutoLB = true
+          indexerDiscovery = manager1
+          useACK=true
+
+          [tcpout]
+          defaultGroup = group1
+        mode: '0644'
+
+    - name: List directory contents for verification
+      command: "ls -l /opt/splunk/etc/deployment-apps/ORG_general_infra_config/local"
+      register: ls_output
+
+    - name: Display directory contents
+      debug:
+        msg: "{{ ls_output.stdout_lines }}"
+
+    - name: restart
+      become: yes
+      become_user: root
+      command:
+            cmd: /opt/splunk/bin/splunk restart
+
+
+
+
+
+- name: Configure Splunk Search Head Cluster Apps
+  hosts: Deployer
+  become: yes
+  become_user: splunk 
+  tasks:
+    - name: Ensure directory structure exists
+      file:
+        path: "/opt/splunk/etc/shcluster/apps/ORG_general_infra_config/local"
+        state: directory
+        mode: '0755'
+
+    - name: Create outputs.conf file
+      copy:
+        dest: "/opt/splunk/etc/shcluster/apps/ORG_general_infra_config/local/outputs.conf"
+        content: |
+          [indexer_discovery:manager1]
+          pass4SymmKey = SoftManiaSHClusterKey
+          manager_uri = https://{{ ClusterManager.ansible_host }}:8089
+
+          [tcpout:group1]
+          autoLBFrequency = 30
+          forceTimebasedAutoLB = true
+          indexerDiscovery = manager1
+          useACK=true
+
+          [tcpout]
+          defaultGroup = group1
+        mode: '0644'
+
+    - name: List directory contents for verification
+      command: "ls -l /opt/splunk/etc/shcluster/apps/ORG_general_infra_config/local"
+      register: ls_output
+
+    - name: Display directory contents
+      debug:
+        msg: "{{ ls_output.stdout_lines }}"
+
+    - name: Apply Search Head Cluster Bundle
+      command: |
+        /opt/splunk/bin/splunk apply shcluster-bundle --answer-yes \
+        -target https://{{ search_heads.SH1.ansible_host }}:8089 -auth admin:admin123
+      register: shcluster_output
+
+    - name: Display shcluster bundle apply output
+      debug:
+        msg: "{{ shcluster_output.stdout_lines }}"
+
+    - name: restart
+      become: yes
+      become_user: root
+      command:
+            cmd: /opt/splunk/bin/splunk restart
+
+
+
+
+- name: Configure Splunk Cluster Manager Outputs
+  hosts: ClusterManager
+  become: yes
+  become_user: splunk
+  tasks:
+    - name: Ensure directory structure exists
+      file:
+        path: "/opt/splunk/etc/apps/ORG_general_infra_config/local"
+        state: directory
+        mode: '0755'
+
+    - name: Create outputs.conf file
+      copy:
+        dest: "/opt/splunk/etc/apps/ORG_general_infra_config/local/outputs.conf"
+        content: |
+          [indexer_discovery:manager1]
+          pass4SymmKey =SoftManiaSHClusterKey
+          manager_uri = https://{{ ClusterManager.ansible_host }}:8089
+
+          [tcpout:group1]
+          autoLBFrequency = 30
+          forceTimebasedAutoLB = true
+          indexerDiscovery = manager1
+          useACK=true
+
+          [tcpout]
+          defaultGroup = group1
+        mode: '0644'
+
+    - name: List directory contents for verification
+      command: "ls -l /opt/splunk/etc/apps/ORG_general_infra_config/local"
+      register: ls_output
+
+    - name: Display directory contents
+      debug:
+        msg: "{{ ls_output.stdout_lines }}"
+
+    - name: restart
+      become: yes
+      become_user: root
+      command:
+            cmd: /opt/splunk/bin/splunk restart
+
+    - name: Display Splunk restart output
+      debug:
+        msg: "{{ restart_output.stdout_lines }}"

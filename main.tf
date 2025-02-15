@@ -136,7 +136,7 @@ resource "aws_instance" "splunk_server" {
     }
 
     inline = [
-      "sleep 150",
+      "sleep 160",
       "sudo su - splunk -c '/opt/splunk/bin/splunk edit user admin -password admin123 -role admin -auth admin:SPLUNK-${self.id}'"
     ]
   }
