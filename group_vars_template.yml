@@ -1,0 +1,29 @@
+ClusterManager:
+  ansible_host: ${cluster_manager[0]}
+
+indexers:
+%{ for name, ip in indexers ~}
+  ${name}:
+    ansible_host: ${ip}
+%{ endfor ~}
+
+search_heads:
+%{ for name, ip in search_heads ~}
+  ${name}:
+    ansible_host: ${ip}
+%{ endfor ~}
+
+Deployment-Server:
+  ansible_host: ${deployment_server[0]}
+
+License-Server:
+  ansible_host: ${license_server[0]}
+
+Deployer:
+  ansible_host: ${deployer[0]}
+
+IFs:
+%{ for name, ip in ifs ~}
+  ${name}:
+    ansible_host: ${ip}
+%{ endfor ~}

@@ -1,4 +1,5 @@
 terraform {
+  
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -106,6 +107,109 @@ resource "aws_instance" "splunk_server" {
   tags = {
     Name = each.value.name
   }
+
+   user_data = <<-EOF
+              #!/bin/bash
+              echo "Accepting Splunk Terms & Conditions"
+              echo "yes" | /opt/splunk/bin/splunk start --accept-license
+              EOF
+
+  provisioner "remote-exec" {
+    connection {
+      type = "ssh"
+      user = "ec2-user"
+      private_key = file("${each.value.key_name}.pem")
+      host = self.public_ip
+    }
+
+    inline = [
+       "echo '${var.ssh_public_key}' >> ~/.ssh/authorized_keys"
+    ]
+  }
+
+  provisioner "remote-exec" {
+    connection {
+      type = "ssh"
+      user = "ec2-user"
+      private_key = file("${each.value.key_name}.pem")
+      host = self.public_ip
+    }
+
+    inline = [
+      "sleep 160",
+      "sudo su - splunk -c '/opt/splunk/bin/splunk edit user admin -password admin123 -role admin -auth admin:SPLUNK-${self.id}'"
+    ]
+  }
+  
+}
+
+resource "time_sleep" "wait_10_seconds" {
+  depends_on = [aws_instance.splunk_server, aws_eip.splunk_eip]
+  create_duration = "10s"
+}
+
+resource "local_file" "ansible_inventory" {
+  depends_on = [time_sleep.wait_10_seconds]
+  filename   = "inventory.ini"
+
+  content = join("\n", flatten([
+    "[ClusterManager]",
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "ClusterManager"],
+
+    "[indexers]",
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "idx1"],
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "idx2"],
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "idx3"],
+
+    "[SH1]",
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "SH1"],
+    
+    "[SH2]",
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "SH2"],
+    
+    "[SH3]",
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "SH3"],
+
+    "[search_heads]",
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "SH1"],
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "SH2"],
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "SH3"],
+
+    "[Deployment-Server]",
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "Deployment-Server"],
+
+    "[License-Server]",
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "License-Server"],
+
+    "[Deployer]",
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "Deployer"],
+
+    "[IFs]",
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "IF1"],
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "IF2"],
+  ]))
+}
+
+
+resource "local_file" "ansible_group_vars" {
+  filename = "group_vars/all.yml"
+
+  content = templatefile("${path.module}/group_vars_template.yml", {
+    cluster_manager    = [for instance in aws_instance.splunk_server : instance.private_ip if instance.tags["Name"] == "ClusterManager"]
+    indexers          = { for instance in aws_instance.splunk_server : instance.tags["Name"] => instance.private_ip if startswith(instance.tags["Name"], "idx") }
+    search_heads      = { for instance in aws_instance.splunk_server : instance.tags["Name"] => instance.private_ip if startswith(instance.tags["Name"], "SH") }
+    deployment_server = [for instance in aws_instance.splunk_server : instance.private_ip if instance.tags["Name"] == "Deployment-Server"]
+    license_server    = [for instance in aws_instance.splunk_server : instance.private_ip if instance.tags["Name"] == "License-Server"]
+    deployer          = [for instance in aws_instance.splunk_server : instance.private_ip if instance.tags["Name"] == "Deployer"]
+    ifs              = { for instance in aws_instance.splunk_server : instance.tags["Name"] => instance.private_ip if startswith(instance.tags["Name"], "IF") }
+  })
+}
+
+
+
+variable "ssh_public_key" {
+  description = "SSH public key for authentication"
+  type        = string
 }
 
 
@@ -115,53 +219,4 @@ resource "aws_eip" "splunk_eip" {
 
   instance = aws_instance.splunk_server[each.key].id
   vpc = true
-}
-
-
-# Outputs (updated for multiple instances)
-output "splunk_instance_names" {
-  value = {
-    for idx, instance in aws_instance.splunk_server : instance.tags["Name"] => instance.id
-  }
-}
-
-output "splunk_public_ips" {
-  value = { 
-    for idx, instance in aws_instance.splunk_server :
-    instance.tags["Name"] => (lookup(aws_eip.splunk_eip, idx, null) !=null ? aws_eip.splunk_eip[idx].public_ip : instance.public_ip)
-  }
-}
-
-output "splunk_private_ips" {
-  value = {
-    for idx, instance in aws_instance.splunk_server : 
-    instance.tags["Name"] => instance.private_ip
-  }
-}
-
-output "instance_states" {
-  value = {
-    for idx, instance in aws_instance.splunk_server : 
-    instance.tags["Name"] => instance.instance_state
-  }
-}
-
-output "splunk_ssh_strings" {
-  value ={
-    for idx, instance in aws_instance.splunk_server :
-    instance.tags["Name"] => "ssh -i ${var.instances[idx].key_name}.pem ec2-user@${instance.public_dns}"
-  } 
-}
-
-output "splunk_passwords" {
-  value = {
-    for idx, instance in aws_instance.splunk_server : 
-    instance.tags["Name"]  => "SPLUNK-${instance.id}"
-  } 
-}
-
-output "splunk_usernames" {
- value = {
-    for idx, instance in aws_instance.splunk_server : instance.tags["Name"] => "admin"
- } 
 }
