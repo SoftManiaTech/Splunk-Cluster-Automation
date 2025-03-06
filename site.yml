@@ -24,7 +24,7 @@
     - name: Update Splunk Admin Password - ClusterManager
       become: yes
       become_user: splunk
-      shell: "/opt/splunk/bin/splunk edit user admin -password {{ splunk_admin_password }} -role admin -auth admin:SPLUNK-{{ ClusterManager.instance_id }}"
+      shell: "sudo -u splunk /opt/splunk/bin/splunk edit user admin -password {{ splunk_admin_password }} -role admin -auth admin:SPLUNK-{{ ClusterManager.instance_id }}"
       args:
         executable: /bin/bash
 
