@@ -1,0 +1,101 @@
+- name: Check all as connected
+  hosts: all
+  become: yes
+
+- hosts: ClusterManager
+  gather_facts: no
+  tasks:
+     - name: Configuring Manager Node
+       become: yes
+       become_user: root
+       command:
+             cmd: /opt/splunk/bin/splunk edit cluster-config -mode manager -replication_factor 2 -search_factor 2 -secret SoftManiaKey -cluster_label Indexer_Cluster -auth admin:{{ splunk_admin_password }}
+          
+     - name: splunk restart for Configuring Manager Node
+       become: yes
+       become_user: root
+       command:
+             cmd: /opt/splunk/bin/splunk restart
+           
+- hosts: indexers
+  gather_facts: no
+  tasks:
+     - name: Configuring Peer Nodes
+       become: yes
+       become_user: root
+       command:
+             cmd: /opt/splunk/bin/splunk edit cluster-config -mode peer -manager_uri https://{{ ClusterManager.private_ip}}:8089 -replication_port 9887 -secret SoftManiaKey -auth admin:{{ splunk_admin_password }}
+          
+     - name: splunk restart for Configuring Manager Node
+       become: yes
+       become_user: root
+       command:
+            cmd: /opt/splunk/bin/splunk restart
+
+- hosts: Deployer
+  gather_facts: no
+  tasks:
+    - name: enable the clustering in deployer
+      become: yes
+      become_user: splunk
+      copy: 
+         dest: /opt/splunk/etc/system/local/server.conf
+         content: |
+            [shclustering]
+            pass4SymmKey = SoftManiaSHClusterKey
+            shcluster_label = shcluster1
+    - name: restart
+      become: yes
+      become_user: root
+      command:
+            cmd: /opt/splunk/bin/splunk restart
+ 
+- name: search Head 1
+  gather_facts: no
+  hosts: SH1
+  user: root
+  become: yes
+  tasks:
+      
+    - name: configure search peer 
+      command: /opt/splunk/bin/splunk init shcluster-config -auth admin:{{ splunk_admin_password }} -mgmt_uri https://{{ search_heads.SH1.private_ip }}:8089 -replication_port 9000 -replication_factor 3 -conf_deploy_fetch_url http://{{ Deployer.private_ip }}:8089 -secret SoftManiaSHClusterKey -shcluster_label shcluster1
+    - name: restart splunk
+      command: /opt/splunk/bin/splunk restart
+
+- name: search Head 2
+  hosts: SH2
+  gather_facts: no
+  user: root
+  become: yes
+  tasks:
+      
+    - name: configure search peer 
+      command: /opt/splunk/bin/splunk init shcluster-config -auth admin:{{ splunk_admin_password }} -mgmt_uri https://{{ search_heads.SH2.private_ip }}:8089 -replication_port 9000 -replication_factor 3 -conf_deploy_fetch_url http://{{ Deployer.private_ip }}:8089 -secret SoftManiaSHClusterKey -shcluster_label shcluster1
+    - name: restart splunk
+      command: /opt/splunk/bin/splunk restart
+
+- name: search Head 3
+  hosts: SH3
+  gather_facts: no
+  user: root
+  become: yes
+  tasks:
+      
+    - name: configure search peer 
+      command: /opt/splunk/bin/splunk init shcluster-config -auth admin:{{ splunk_admin_password }} -mgmt_uri https://{{ search_heads.SH3.private_ip }}:8089 -replication_port 9000 -replication_factor 3 -conf_deploy_fetch_url http://{{ Deployer.private_ip }}:8089 -secret SoftManiaSHClusterKey -shcluster_label shcluster1
+    - name: restart splunk
+      command: /opt/splunk/bin/splunk restart
+    
+    - name: Pause to SH1 is restarting
+      run_once: true
+      pause:
+        seconds: 60
+
+- name: shc 1 captain
+  hosts: SH1
+  gather_facts: no
+  user: root
+  become: yes
+  tasks:
+    - name: Making cluster captain
+      command: /opt/splunk/bin/splunk bootstrap shcluster-captain -servers_list "https://{{ search_heads.SH1.private_ip }}:8089,https://{{ search_heads.SH2.private_ip }}:8089,https://{{ search_heads.SH3.private_ip }}:8089" -auth admin:{{ splunk_admin_password }}

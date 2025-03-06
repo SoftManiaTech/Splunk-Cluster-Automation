@@ -1,29 +1,38 @@
 ClusterManager:
-  ansible_host: ${cluster_manager[0]}
+  private_ip: ${cluster_manager[0].private_ip}
+  instance_id: ${cluster_manager[0].instance_id}
 
 indexers:
-%{ for name, ip in indexers ~}
+%{ for name, instance in indexers ~}
   ${name}:
-    ansible_host: ${ip}
+    private_ip: ${instance.private_ip}
+    instance_id: ${instance.instance_id}
 %{ endfor ~}
 
 search_heads:
-%{ for name, ip in search_heads ~}
+%{ for name, instance in search_heads ~}
   ${name}:
-    ansible_host: ${ip}
+    private_ip: ${instance.private_ip}
+    instance_id: ${instance.instance_id}
 %{ endfor ~}
 
 Deployment-Server:
-  ansible_host: ${deployment_server[0]}
+  private_ip: ${deployment_server[0].private_ip}
+  instance_id: ${deployment_server[0].instance_id}
 
 License-Server:
-  ansible_host: ${license_server[0]}
+  private_ip: ${license_server[0].private_ip}
+  instance_id: ${license_server[0].instance_id}
 
 Deployer:
-  ansible_host: ${deployer[0]}
+  private_ip: ${deployer[0].private_ip}
+  instance_id: ${deployer[0].instance_id}
 
 IFs:
-%{ for name, ip in ifs ~}
+%{ for name, instance in ifs ~}
   ${name}:
-    ansible_host: ${ip}
+    private_ip: ${instance.private_ip}
+    instance_id: ${instance.instance_id}
 %{ endfor ~}
+
+splunk_admin_password: admin123

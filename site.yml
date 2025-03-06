@@ -1,288 +1,188 @@
-- hosts: ClusterManager
-  tasks:
-     - name: Configuring Manager Node
-       become: yes
-       become_user: root
-       command:
-             cmd: /opt/splunk/bin/splunk edit cluster-config -mode manager -replication_factor 2 -search_factor 2 -secret SoftManiaKey -cluster_label Indexer_Cluster -auth admin:admin123
-          
-     - name: splunk restart for Configuring Manager Node
-       become: yes
-       become_user: root
-       command:
-             cmd: /opt/splunk/bin/splunk restart
-           
-- hosts: indexers
-  tasks:
-     - name: Configuring Peer Nodes
-       become: yes
-       become_user: root
-       command:
-             cmd: /opt/splunk/bin/splunk edit cluster-config -mode peer -manager_uri https://{{ ClusterManager.ansible_host}}:8089 -replication_port 9887 -secret SoftManiaKey -auth admin:admin123
-          
-     - name: splunk restart for Configuring Manager Node
-       become: yes
-       become_user: root
-       command:
-            cmd: /opt/splunk/bin/splunk restart
-
-
-- hosts: Deployer
-  tasks:
-    - name: enable the clustering in deployer
-      become: yes
-      become_user: splunk
-      copy: 
-         dest: /opt/splunk/etc/system/local/server.conf
-         content: |
-            [shclustering]
-            pass4SymmKey = SoftManiaSHClusterKey
-            shcluster_label = shcluster1
-    - name: restart
-      become: yes
-      become_user: root
-      command:
-            cmd: /opt/splunk/bin/splunk restart
- 
-- name: search Head 1
-  hosts: SH1
-  user: root
+---
+- name: Setup Splunk Standalone Server
+  hosts: all
   become: yes
-
   tasks:
-      
-    - name: configure search peer 
-      command: /opt/splunk/bin/splunk init shcluster-config -auth admin:admin123 -mgmt_uri https://{{ search_heads.SH1.ansible_host }}:8089 -replication_port 9000 -replication_factor 3 -conf_deploy_fetch_url http://{{ Deployer.ansible_host }}:8089 -secret SoftManiaSHClusterKey -shcluster_label shcluster1
-
-    - name: restart splunk
-      command: /opt/splunk/bin/splunk restart
-
-- name: search Head 2
-  hosts: SH2
-  user: root
-  become: yes
-
-  tasks:
-      
-    - name: configure search peer 
-      command: /opt/splunk/bin/splunk init shcluster-config -auth admin:admin123 -mgmt_uri https://{{ search_heads.SH2.ansible_host }}:8089 -replication_port 9000 -replication_factor 3 -conf_deploy_fetch_url http://{{ Deployer.ansible_host }}:8089 -secret SoftManiaSHClusterKey -shcluster_label shcluster1
-
-    - name: restart splunk
-      command: /opt/splunk/bin/splunk restart
-
-- name: search Head 3
-  hosts: SH3
-  user: root
-  become: yes
-
-  tasks:
-      
-    - name: configure search peer 
-      command: /opt/splunk/bin/splunk init shcluster-config -auth admin:admin123 -mgmt_uri https://{{ search_heads.SH3.ansible_host }}:8089 -replication_port 9000 -replication_factor 3 -conf_deploy_fetch_url http://{{ Deployer.ansible_host }}:8089 -secret SoftManiaSHClusterKey -shcluster_label shcluster1
-
-    - name: restart splunk
-      command: /opt/splunk/bin/splunk restart
-
-
-- name: shc 1 captain
-  hosts: SH1
-  user: root
-  become: yes
-
-  tasks:
-    - name: Making cluster captain
-      command: /opt/splunk/bin/splunk bootstrap shcluster-captain -servers_list "https://{{ search_heads.SH1.ansible_host }}:8089,https://{{ search_heads.SH2.ansible_host }}:8089,https://{{ search_heads.SH3.ansible_host }}:8089" -auth admin:admin123
-
-- hosts: IFs
-  tasks:
-    - name: Configure Intermediate Forwarders
-      command: /opt/splunk/bin/splunk set deploy-poll {{ Deployment-Server.ansible_host }}:8089
+    - name: Ensure Splunk User Exists
+      user:
+        name: splunk
+        shell: /bin/bash
+        createhome: yes
     
-    - name: restart splunk
-      command: /opt/splunk/bin/splunk restart
+    - name: Pause to ensure file download completion (Only Once)
+      run_once: true
+      pause:
+        seconds: 160
 
-
-- name: Connect Search Head Cluster with Indexer Cluster
-  hosts: search_heads
-  become_user: root
+- name: Change Splunk Admin Password - ClusterManager
+  hosts: ClusterManager
+  gather_facts: no
   become: yes
-
+  vars_files:
+    - group_vars/all.yml
   tasks:
-    - name: configure indexer cluster with search head 
-      command : /opt/splunk/bin/splunk edit cluster-config -mode searchhead -manager_uri https://{{ ClusterManager.ansible_host }}:8089 -secret SoftManiaKey -auth admin:admin123
-
-    - name: restart splunk
-      command: /opt/splunk/bin/splunk restart
-
-
-
-
-
-- hosts: ClusterManager
-  tasks:
-    - name: Connect Forwarders with Indexer Cluster
+    - name: Update Splunk Admin Password - ClusterManager
       become: yes
       become_user: splunk
-      copy: 
-         dest: /opt/splunk/etc/system/local/server.conf
-         content: |
-            [indexer_discovery]
-            pass4SymmKey = SoftManiaSHClusterKey
-            polling_rate = 10
-            indexerWeightByDiskCapacity = true
-    - name: restart
-      become: yes
-      become_user: root
-      command:
-            cmd: /opt/splunk/bin/splunk restart
- 
+      shell: "/opt/splunk/bin/splunk edit user admin -password {{ splunk_admin_password }} -role admin -auth admin:SPLUNK-{{ ClusterManager.instance_id }}"
+      args:
+        executable: /bin/bash
 
-- name: Configure Splunk Deployment Apps
+- name: Change Splunk Admin Password - Indexer 1
+  hosts: indexers
+  gather_facts: no
+  become: yes
+  vars_files:
+    - group_vars/all.yml
+  tasks:
+    - name: Update Splunk Admin Password - Indexer 1
+      become: yes
+      become_user: splunk
+      shell: "/opt/splunk/bin/splunk edit user admin -password {{ splunk_admin_password }} -role admin -auth admin:SPLUNK-{{ indexers.idx1.instance_id }}"
+      args:
+        executable: /bin/bash
+      when: inventory_hostname == "idx1"
+
+- name: Change Splunk Admin Password - Indexer 2
+  hosts: indexers
+  gather_facts: no
+  become: yes
+  vars_files:
+    - group_vars/all.yml
+  tasks:
+    - name: Update Splunk Admin Password - Indexer 2
+      become: yes
+      become_user: splunk
+      shell: "/opt/splunk/bin/splunk edit user admin -password {{ splunk_admin_password }} -role admin -auth admin:SPLUNK-{{ indexers.idx2.instance_id }}"
+      args:
+        executable: /bin/bash
+      when: inventory_hostname == "idx2"
+
+- name: Change Splunk Admin Password - Indexer 3
+  hosts: indexers
+  gather_facts: no
+  become: yes
+  vars_files:
+    - group_vars/all.yml
+  tasks:
+    - name: Update Splunk Admin Password - Indexer 3
+      become: yes
+      become_user: splunk
+      shell: "/opt/splunk/bin/splunk edit user admin -password {{ splunk_admin_password }} -role admin -auth admin:SPLUNK-{{ indexers.idx3.instance_id }}"
+      args:
+        executable: /bin/bash
+      when: inventory_hostname == "idx3"
+
+- name: Change Splunk Admin Password - Search Head 1
+  hosts: SH1
+  gather_facts: no
+  become: yes
+  vars_files:
+    - group_vars/all.yml
+  tasks:
+    - name: Update Splunk Admin Password - Search Head 1
+      become: yes
+      become_user: splunk
+      shell: "/opt/splunk/bin/splunk edit user admin -password {{ splunk_admin_password }} -role admin -auth admin:SPLUNK-{{ search_heads.SH1.instance_id }}"
+      args:
+        executable: /bin/bash
+
+- name: Change Splunk Admin Password - Search Head 2
+  hosts: SH2
+  gather_facts: no
+  become: yes
+  vars_files:
+    - group_vars/all.yml
+  tasks:
+    - name: Update Splunk Admin Password - Search Head 2
+      become: yes
+      become_user: splunk
+      shell: "/opt/splunk/bin/splunk edit user admin -password {{ splunk_admin_password }} -role admin -auth admin:SPLUNK-{{ search_heads.SH2.instance_id }}"
+      args:
+        executable: /bin/bash
+
+- name: Change Splunk Admin Password - Search Head 3
+  hosts: SH3
+  gather_facts: no
+  become: yes
+  vars_files:
+    - group_vars/all.yml
+  tasks:
+    - name: Update Splunk Admin Password - Search Head 3
+      become: yes
+      become_user: splunk
+      shell: "/opt/splunk/bin/splunk edit user admin -password {{ splunk_admin_password }} -role admin -auth admin:SPLUNK-{{ search_heads.SH3.instance_id }}"
+      args:
+        executable: /bin/bash
+
+- name: Change Splunk Admin Password - Deployment Server
   hosts: Deployment-Server
+  gather_facts: no
   become: yes
-  become_user: splunk
+  vars_files:
+    - group_vars/all.yml
   tasks:
-    - name: Ensure directory structure exists
-      file:
-        path: "/opt/splunk/etc/deployment-apps/ORG_general_infra_config/local"
-        state: directory
-        mode: '0755'
-
-    - name: Create outputs.conf file
-      copy:
-        dest: "/opt/splunk/etc/deployment-apps/ORG_general_infra_config/local/outputs.conf"
-        content: |
-          [indexer_discovery:manager1]
-          pass4SymmKey = SoftManiaSHClusterKey
-          manager_uri = https://{{ ClusterManager.ansible_host }}:8089
-
-          [tcpout:group1]
-          autoLBFrequency = 30
-          forceTimebasedAutoLB = true
-          indexerDiscovery = manager1
-          useACK=true
-
-          [tcpout]
-          defaultGroup = group1
-        mode: '0644'
-
-    - name: List directory contents for verification
-      command: "ls -l /opt/splunk/etc/deployment-apps/ORG_general_infra_config/local"
-      register: ls_output
-
-    - name: Display directory contents
-      debug:
-        msg: "{{ ls_output.stdout_lines }}"
-
-    - name: restart
+    - name: Update Splunk Admin Password - Deployment Server
       become: yes
-      become_user: root
-      command:
-            cmd: /opt/splunk/bin/splunk restart
+      become_user: splunk
+      shell: "/opt/splunk/bin/splunk edit user admin -password {{ splunk_admin_password }} -role admin -auth admin:SPLUNK-{{ Deployment_Server.instance_id }}"
+      args:
+        executable: /bin/bash
 
+- name: Change Splunk Admin Password - License Server
+  hosts: License-Server
+  gather_facts: no
+  become: yes
+  vars_files:
+    - group_vars/all.yml
+  tasks:
+    - name: Update Splunk Admin Password - License Server
+      become: yes
+      become_user: splunk
+      shell: "/opt/splunk/bin/splunk edit user admin -password {{ splunk_admin_password }} -role admin -auth admin:SPLUNK-{{ License_Server.instance_id }}"
+      args:
+        executable: /bin/bash
 
-
-
-
-- name: Configure Splunk Search Head Cluster Apps
+- name: Change Splunk Admin Password - Deployer
   hosts: Deployer
+  gather_facts: no
   become: yes
-  become_user: splunk 
+  vars_files:
+    - group_vars/all.yml
   tasks:
-    - name: Ensure directory structure exists
-      file:
-        path: "/opt/splunk/etc/shcluster/apps/ORG_general_infra_config/local"
-        state: directory
-        mode: '0755'
-
-    - name: Create outputs.conf file
-      copy:
-        dest: "/opt/splunk/etc/shcluster/apps/ORG_general_infra_config/local/outputs.conf"
-        content: |
-          [indexer_discovery:manager1]
-          pass4SymmKey = SoftManiaSHClusterKey
-          manager_uri = https://{{ ClusterManager.ansible_host }}:8089
-
-          [tcpout:group1]
-          autoLBFrequency = 30
-          forceTimebasedAutoLB = true
-          indexerDiscovery = manager1
-          useACK=true
-
-          [tcpout]
-          defaultGroup = group1
-        mode: '0644'
-
-    - name: List directory contents for verification
-      command: "ls -l /opt/splunk/etc/shcluster/apps/ORG_general_infra_config/local"
-      register: ls_output
-
-    - name: Display directory contents
-      debug:
-        msg: "{{ ls_output.stdout_lines }}"
-
-    - name: Apply Search Head Cluster Bundle
-      command: |
-        /opt/splunk/bin/splunk apply shcluster-bundle --answer-yes \
-        -target https://{{ search_heads.SH1.ansible_host }}:8089 -auth admin:admin123
-      register: shcluster_output
-
-    - name: Display shcluster bundle apply output
-      debug:
-        msg: "{{ shcluster_output.stdout_lines }}"
-
-    - name: restart
+    - name: Update Splunk Admin Password - Deployer
       become: yes
-      become_user: root
-      command:
-            cmd: /opt/splunk/bin/splunk restart
+      become_user: splunk
+      shell: "/opt/splunk/bin/splunk edit user admin -password {{ splunk_admin_password }} -role admin -auth admin:SPLUNK-{{ Deployer.instance_id }}"
+      args:
+        executable: /bin/bash
 
-
-
-
-- name: Configure Splunk Cluster Manager Outputs
-  hosts: ClusterManager
+- name: Change Splunk Admin Password - IF1
+  hosts: IFs
+  gather_facts: no
   become: yes
-  become_user: splunk
+  vars_files:
+    - group_vars/all.yml
   tasks:
-    - name: Ensure directory structure exists
-      file:
-        path: "/opt/splunk/etc/apps/ORG_general_infra_config/local"
-        state: directory
-        mode: '0755'
-
-    - name: Create outputs.conf file
-      copy:
-        dest: "/opt/splunk/etc/apps/ORG_general_infra_config/local/outputs.conf"
-        content: |
-          [indexer_discovery:manager1]
-          pass4SymmKey =SoftManiaSHClusterKey
-          manager_uri = https://{{ ClusterManager.ansible_host }}:8089
-
-          [tcpout:group1]
-          autoLBFrequency = 30
-          forceTimebasedAutoLB = true
-          indexerDiscovery = manager1
-          useACK=true
-
-          [tcpout]
-          defaultGroup = group1
-        mode: '0644'
-
-    - name: List directory contents for verification
-      command: "ls -l /opt/splunk/etc/apps/ORG_general_infra_config/local"
-      register: ls_output
-
-    - name: Display directory contents
-      debug:
-        msg: "{{ ls_output.stdout_lines }}"
-
-    - name: restart
+    - name: Update Splunk Admin Password - IF1
       become: yes
-      become_user: root
-      command:
-            cmd: /opt/splunk/bin/splunk restart
+      become_user: splunk
+      shell: "/opt/splunk/bin/splunk edit user admin -password {{ splunk_admin_password }} -role admin -auth admin:SPLUNK-{{ IFs.IF1.instance_id }}"
+      args:
+        executable: /bin/bash
+      when: inventory_hostname == "IF1"
 
-    - name: Display Splunk restart output
-      debug:
-        msg: "{{ restart_output.stdout_lines }}"
+- name: Change Splunk Admin Password - IF2
+  hosts: IFs
+  gather_facts: no
+  become: yes
+  vars_files:
+    - group_vars/all.yml
+  tasks:
+    - name: Update Splunk Admin Password - IF2
+      become: yes
+      become_user: splunk
+      shell: "/opt/splunk/bin/splunk edit user admin -password {{ splunk_admin_password }} -role admin -auth admin:SPLUNK-{{ IFs.IF2.instance_id }}"
+      args:
+        executable: /bin/bash
+      when: inventory_hostname == "IF2"
