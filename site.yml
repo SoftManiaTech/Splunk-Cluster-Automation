@@ -9,10 +9,10 @@
         shell: /bin/bash
         createhome: yes
     
-    - name: Pause to ensure file download completion (Only Once)
+    - name: Pause to ensure all server is up
       run_once: true
       pause:
-        seconds: 160
+        seconds: 150
 
 - name: Change Splunk Admin Password - ClusterManager
   hosts: ClusterManager

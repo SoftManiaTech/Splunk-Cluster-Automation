@@ -18,13 +18,12 @@
              cmd: /opt/splunk/bin/splunk restart
            
 - hosts: indexers
-  gather_facts: no
   tasks:
      - name: Configuring Peer Nodes
        become: yes
        become_user: root
        command:
-             cmd: /opt/splunk/bin/splunk edit cluster-config -mode peer -manager_uri https://{{ ClusterManager.private_ip}}:8089 -replication_port 9887 -secret SoftManiaKey -auth admin:{{ splunk_admin_password }}
+             cmd: /opt/splunk/bin/splunk edit cluster-config -mode peer -manager_uri https://{{ ClusterManager.private_ip }}:8089 -replication_port 9887 -secret SoftManiaKey -auth admin:{{ splunk_admin_password }}
           
      - name: splunk restart for Configuring Manager Node
        become: yes
@@ -99,3 +98,180 @@
   tasks:
     - name: Making cluster captain
       command: /opt/splunk/bin/splunk bootstrap shcluster-captain -servers_list "https://{{ search_heads.SH1.private_ip }}:8089,https://{{ search_heads.SH2.private_ip }}:8089,https://{{ search_heads.SH3.private_ip }}:8089" -auth admin:{{ splunk_admin_password }}
+
+- hosts: IFs
+  user: splunk
+  become: yes
+  tasks:
+    - name: Configure Intermediate Forwarders
+      command: /opt/splunk/bin/splunk set deploy-poll {{ Deployment_Server.private_ip }}:8089 -auth admin:{{ splunk_admin_password }}
+    
+    - name: restart splunk
+      command: /opt/splunk/bin/splunk restart
+
+- name: Connect Search Head Cluster with Indexer Cluster
+  hosts: search_heads
+  gather_facts: no
+  become_user: splunk
+  become: yes
+  tasks:
+    - name: configure indexer cluster with search head 
+      command : /opt/splunk/bin/splunk edit cluster-config -mode searchhead -manager_uri https://{{ ClusterManager.private_ip }}:8089 -secret SoftManiaKey -auth admin:{{ splunk_admin_password }}
+    
+    - name: restart
+      become: yes
+      become_user: root
+      command:
+            cmd: /opt/splunk/bin/splunk restart
+
+- hosts: ClusterManager
+  tasks:
+    - name: Connect Forwarders with Indexer Cluster
+      become: yes
+      become_user: splunk
+      copy: 
+         dest: /opt/splunk/etc/system/local/server.conf
+         content: |
+            [indexer_discovery]
+            pass4SymmKey = SoftManiaSHClusterKey
+            polling_rate = 10
+            indexerWeightByDiskCapacity = true
+
+    - name: restart
+      become: yes
+      become_user: root
+      command:
+            cmd: /opt/splunk/bin/splunk restart
+
+- name: Configure Splunk Deployment Apps
+  hosts: Deployment_Server
+  gather_facts: no
+  become: yes
+  become_user: splunk
+  tasks:
+    - name: Ensure directory structure exists in Deployment_server
+      file:
+        path: "/opt/splunk/etc/deployment-apps/ORG_general_infra_config/local"
+        state: directory
+        mode: '0755'
+
+    - name: Create outputs.conf file
+      copy:
+        dest: "/opt/splunk/etc/deployment-apps/ORG_general_infra_config/local/outputs.conf"
+        content: |
+          [indexer_discovery:manager1]
+          pass4SymmKey = SoftManiaSHClusterKey
+          manager_uri = https://{{ ClusterManager.private_ip }}:8089
+          [tcpout:group1]
+          autoLBFrequency = 30
+          forceTimebasedAutoLB = true
+          indexerDiscovery = manager1
+          useACK=true
+          [tcpout]
+          defaultGroup = group1
+        mode: '0644'
+
+    - name: List directory contents for verification
+      command: "ls -l /opt/splunk/etc/deployment-apps/ORG_general_infra_config/local"
+      register: ls_output
+    - name: Display directory contents
+      debug:
+        msg: "{{ ls_output.stdout_lines }}"
+
+    - name: restart
+      become: yes
+      become_user: root
+      command:
+            cmd: /opt/splunk/bin/splunk restart
+
+- name: Configure Splunk Search Head Cluster Apps
+  hosts: Deployer
+  gather_facts: no
+  become: yes
+  become_user: splunk 
+  tasks:
+    - name: Ensure directory structure exists in Deployer
+      file:
+        path: "/opt/splunk/etc/shcluster/apps/ORG_general_infra_config/local"
+        state: directory
+        mode: '0755'
+
+    - name: Create outputs.conf file
+      copy:
+        dest: "/opt/splunk/etc/shcluster/apps/ORG_general_infra_config/local/outputs.conf"
+        content: |
+          [indexer_discovery:manager1]
+          pass4SymmKey = SoftManiaSHClusterKey
+          manager_uri = https://{{ ClusterManager.private_ip }}:8089
+          [tcpout:group1]
+          autoLBFrequency = 30
+          forceTimebasedAutoLB = true
+          indexerDiscovery = manager1
+          useACK=true
+          [tcpout]
+          defaultGroup = group1
+        mode: '0644'
+
+    - name: List directory contents for verification
+      command: "ls -l /opt/splunk/etc/shcluster/apps/ORG_general_infra_config/local"
+      register: ls_output
+    - name: Display directory contents
+      debug:
+        msg: "{{ ls_output.stdout_lines }}"
+
+    - name: Apply Search Head Cluster Bundle
+      command: |
+        /opt/splunk/bin/splunk apply shcluster-bundle --answer-yes \
+        -target https://{{ search_heads.SH1.private_ip }}:8089 -auth admin:{{ splunk_admin_password }}
+      register: shcluster_output
+
+    - name: Display shcluster bundle apply output
+      debug:
+        msg: "{{ shcluster_output.stdout_lines }}"
+
+    - name: restart
+      become: yes
+      become_user: root
+      command:
+            cmd: /opt/splunk/bin/splunk restart
+
+- name: Configure Splunk Cluster Manager Outputs
+  hosts: ClusterManager
+  gather_facts: no
+  become: yes
+  become_user: splunk
+  tasks:
+    - name: Ensure directory structure exists in ClusterManager
+      file:
+        path: "/opt/splunk/etc/apps/ORG_general_infra_config/local"
+        state: directory
+        mode: '0755'
+    - name: Create outputs.conf file
+      copy:
+        dest: "/opt/splunk/etc/apps/ORG_general_infra_config/local/outputs.conf"
+        content: |
+          [indexer_discovery:manager1]
+          pass4SymmKey =SoftManiaSHClusterKey
+          manager_uri = https://{{ ClusterManager.private_ip }}:8089
+          [tcpout:group1]
+          autoLBFrequency = 30
+          forceTimebasedAutoLB = true
+          indexerDiscovery = manager1
+          useACK=true
+          [tcpout]
+          defaultGroup = group1
+        mode: '0644'
+
+    - name: List directory contents for verification
+      command: "ls -l /opt/splunk/etc/apps/ORG_general_infra_config/local"
+      register: ls_output
+
+    - name: Display directory contents
+      debug:
+        msg: "{{ ls_output.stdout_lines }}"
+
+    - name: restart
+      become: yes
+      become_user: root
+      command:
+            cmd: /opt/splunk/bin/splunk restart

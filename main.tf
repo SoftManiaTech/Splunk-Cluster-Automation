@@ -104,10 +104,10 @@ resource "local_file" "ansible_inventory" {
     [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "SH2"],
     [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "SH3"],
 
-    "[Deployment-Server]",
+    "[Deployment_Server]",
     [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "Deployment-Server"],
 
-    "[License-Server]",
+    "[License_Server]",
     [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "License-Server"],
 
     "[Deployer]",
