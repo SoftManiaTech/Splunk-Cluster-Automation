@@ -80,44 +80,45 @@ resource "time_sleep" "wait_10_seconds" {
 resource "local_file" "ansible_inventory" {
   depends_on = [time_sleep.wait_10_seconds]
   filename   = "inventory.ini"
-
-  content = join("\n", flatten([
+  
+  content    = join("\n", flatten([
     "[ClusterManager]",
-    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "ClusterManager"],
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} instance_id=${aws_instance.splunk_server[idx].id} ansible_user=ec2-user" if instance.name == "ClusterManager"],
 
     "[indexers]",
-    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "idx1"],
-    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "idx2"],
-    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "idx3"],
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} instance_id=${aws_instance.splunk_server[idx].id} ansible_user=ec2-user" if instance.name == "idx1"],
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} instance_id=${aws_instance.splunk_server[idx].id} ansible_user=ec2-user" if instance.name == "idx2"],
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} instance_id=${aws_instance.splunk_server[idx].id} ansible_user=ec2-user" if instance.name == "idx3"],
 
     "[SH1]",
-    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "SH1"],
-    
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} instance_id=${aws_instance.splunk_server[idx].id} ansible_user=ec2-user" if instance.name == "SH1"],
+
     "[SH2]",
-    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "SH2"],
-    
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} instance_id=${aws_instance.splunk_server[idx].id} ansible_user=ec2-user" if instance.name == "SH2"],
+
     "[SH3]",
-    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "SH3"],
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} instance_id=${aws_instance.splunk_server[idx].id} ansible_user=ec2-user" if instance.name == "SH3"],
 
     "[search_heads]",
-    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "SH1"],
-    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "SH2"],
-    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "SH3"],
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} instance_id=${aws_instance.splunk_server[idx].id} ansible_user=ec2-user" if instance.name == "SH1"],
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} instance_id=${aws_instance.splunk_server[idx].id} ansible_user=ec2-user" if instance.name == "SH2"],
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} instance_id=${aws_instance.splunk_server[idx].id} ansible_user=ec2-user" if instance.name == "SH3"],
 
     "[Deployment_Server]",
-    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "Deployment-Server"],
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} instance_id=${aws_instance.splunk_server[idx].id} ansible_user=ec2-user" if instance.name == "Deployment-Server"],
 
     "[License_Server]",
-    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "License-Server"],
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} instance_id=${aws_instance.splunk_server[idx].id} ansible_user=ec2-user" if instance.name == "License-Server"],
 
     "[Deployer]",
-    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "Deployer"],
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} instance_id=${aws_instance.splunk_server[idx].id} ansible_user=ec2-user" if instance.name == "Deployer"],
 
     "[IFs]",
-    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "IF1"],
-    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} ansible_user=ec2-user" if instance.name == "IF2"],
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} instance_id=${aws_instance.splunk_server[idx].id} ansible_user=ec2-user" if instance.name == "IF1"],
+    [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} instance_id=${aws_instance.splunk_server[idx].id} ansible_user=ec2-user" if instance.name == "IF2"],
   ]))
 }
+
 
 
 resource "local_file" "ansible_group_vars" {
