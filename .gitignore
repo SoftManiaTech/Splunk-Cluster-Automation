@@ -9,7 +9,7 @@
 *.pem
 
 group_vars/all.yml
-*.ini
+
 
 # Crash log files
 crash.log
