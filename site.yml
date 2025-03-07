@@ -1,54 +1,69 @@
 ---
-- name: Setup Splunk Standalone Server
+- name: Setup Splunk Cluster Environment
   hosts: all
   become: yes
+  vars_files:
+    - group_vars/all.yml
   tasks:
-    - name: Ensure Splunk User Exists
-      user:
-        name: splunk
-        shell: /bin/bash
-        createhome: yes
-    
     - name: Pause to ensure all server is up
       run_once: true
       pause:
         seconds: 180
 
-- name: Change Splunk Admin Passwords
-  hosts: all
-  gather_facts: no
-  become: yes
-  vars_files:
-    - group_vars/all.yml
-  tasks:
     - name: Update Splunk Admin Password in parallel
       become_user: splunk
       shell: "/opt/splunk/bin/splunk edit user admin -password {{ splunk_admin_password }} -role admin -auth admin:SPLUNK-{{ hostvars[inventory_hostname]['instance_id'] }}"
       args:
         executable: /bin/bash
 
+    - name: Set Hostname for Each Instance
+      command: sudo hostnamectl set-hostname {{ inventory_hostname }}
 
-- name: Check all as connected
-  hosts: all
-  become: yes
+    - name: Set servername for Each Instance
+      become_user: root
+      shell: "/opt/splunk/bin/splunk set servername {{ inventory_hostname }} -auth admin:{{ splunk_admin_password }} --answer-yes"
+      args:
+        executable: /bin/bash
+    
+    - name: Set default-hostname for Each Instance
+      become_user: root
+      shell: "/opt/splunk/bin/splunk set default-hostname {{ inventory_hostname }} -auth admin:{{ splunk_admin_password }} --answer-yes"
+      args:
+        executable: /bin/bash
 
-- hosts: ClusterManager
-  gather_facts: no
-  tasks:
-    - name: Configuring Manager Node
+    - name: splunk restart for all servers
       become: yes
       become_user: root
       command:
-        cmd: /opt/splunk/bin/splunk edit cluster-config -mode manager -replication_factor 2 -search_factor 2 -secret SoftManiaKey -cluster_label Indexer_Cluster -auth admin:{{ splunk_admin_password }} --accept-license --no-prompt
-      ignore_errors: yes # Ensures the playbook does not exit immediately
+        cmd: /opt/splunk/bin/splunk restart
 
-             
+    - name: Pause
+      run_once: true
+      pause:
+        seconds: 50
+
+
+- hosts: ClusterManager
+  become: yes
+  become_user: root
+  tasks:
+    - name: Configuring Manager Node
+      command:
+        cmd: /opt/splunk/bin/splunk edit cluster-config -mode manager -replication_factor 3 -search_factor 2 -secret SoftManiaKey -cluster_label Indexer_Cluster -auth admin:{{ splunk_admin_password }} --accept-license --no-prompt
+      changed_when: true
+      register: cluster_output
+
+    - name: Debug Cluster Config Output
+      debug:
+        var: cluster_output
+     
     - name: splunk restart for Configuring Manager Node
       become: yes
       become_user: root
       command:
         cmd: /opt/splunk/bin/splunk restart
-      ignore_errors: yes # Ensures the playbook does not exit immediately
+      
+
            
 - hosts: indexers
   tasks:
@@ -57,7 +72,6 @@
       become_user: root
       command:
         cmd: /opt/splunk/bin/splunk edit cluster-config -mode peer -manager_uri https://{{ ClusterManager.private_ip }}:8089 -replication_port 9887 -secret SoftManiaKey -auth admin:{{ splunk_admin_password }} --accept-license --no-prompt
-      ignore_errors: yes # Ensures the playbook does not exit immediately
 
    
     - name: splunk restart for Configuring Manager Node
@@ -78,7 +92,6 @@
             [shclustering]
             pass4SymmKey = SoftManiaSHClusterKey
             shcluster_label = shcluster1
-      ignore_errors: yes # Ensures the playbook does not exit immediately
 
    
     - name: restart
@@ -96,7 +109,6 @@
       
     - name: configure search peer 
       command: /opt/splunk/bin/splunk init shcluster-config -auth admin:{{ splunk_admin_password }} -mgmt_uri https://{{ search_heads.SH1.private_ip }}:8089 -replication_port 9000 -replication_factor 3 -conf_deploy_fetch_url http://{{ Deployer.private_ip }}:8089 -secret SoftManiaSHClusterKey -shcluster_label shcluster1 --accept-license --no-prompt
-      ignore_errors: yes # Ensures the playbook does not exit immediately
 
        
     - name: restart splunk
@@ -111,7 +123,6 @@
       
     - name: configure search peer 
       command: /opt/splunk/bin/splunk init shcluster-config -auth admin:{{ splunk_admin_password }} -mgmt_uri https://{{ search_heads.SH2.private_ip }}:8089 -replication_port 9000 -replication_factor 3 -conf_deploy_fetch_url http://{{ Deployer.private_ip }}:8089 -secret SoftManiaSHClusterKey -shcluster_label shcluster1
-      ignore_errors: yes # Ensures the playbook does not exit immediately
 
    
     - name: restart splunk
@@ -126,7 +137,6 @@
       
     - name: configure search peer 
       command: /opt/splunk/bin/splunk init shcluster-config -auth admin:{{ splunk_admin_password }} -mgmt_uri https://{{ search_heads.SH3.private_ip }}:8089 -replication_port 9000 -replication_factor 3 -conf_deploy_fetch_url http://{{ Deployer.private_ip }}:8089 -secret SoftManiaSHClusterKey -shcluster_label shcluster1
-      ignore_errors: yes # Ensures the playbook does not exit immediately
 
    
     - name: restart splunk
@@ -145,7 +155,6 @@
   tasks:
     - name: Making cluster captain
       command: /opt/splunk/bin/splunk bootstrap shcluster-captain -servers_list "https://{{ search_heads.SH1.private_ip }}:8089,https://{{ search_heads.SH2.private_ip }}:8089,https://{{ search_heads.SH3.private_ip }}:8089" -auth admin:{{ splunk_admin_password }}
-      ignore_errors: yes # Ensures the playbook does not exit immediately
 
    
 - hosts: IFs
@@ -154,7 +163,6 @@
   tasks:
     - name: Configure Intermediate Forwarders
       command: /opt/splunk/bin/splunk set deploy-poll {{ Deployment_Server.private_ip }}:8089 -auth admin:{{ splunk_admin_password }}
-      ignore_errors: yes # Ensures the playbook does not exit immediately
 
    
     - name: restart splunk
@@ -168,7 +176,6 @@
   tasks:
     - name: configure indexer cluster with search head 
       command : /opt/splunk/bin/splunk edit cluster-config -mode searchhead -manager_uri https://{{ ClusterManager.private_ip }}:8089 -secret SoftManiaKey -auth admin:{{ splunk_admin_password }}
-      ignore_errors: yes # Ensures the playbook does not exit immediately
 
    
     - name: restart
@@ -176,7 +183,7 @@
       become_user: root
       command:
             cmd: /opt/splunk/bin/splunk restart
-
+     
 - hosts: ClusterManager
   tasks:
     - name: Connect Forwarders with Indexer Cluster
@@ -189,9 +196,7 @@
             pass4SymmKey = SoftManiaSHClusterKey
             polling_rate = 10
             indexerWeightByDiskCapacity = true
-      ignore_errors: yes # Ensures the playbook does not exit immediately
 
-   
     - name: restart
       become: yes
       become_user: root
@@ -209,7 +214,7 @@
         path: "/opt/splunk/etc/deployment-apps/ORG_general_infra_config/local"
         state: directory
         mode: '0755'
-      ignore_errors: yes  # Ensures the playbook does not exit immediately
+      
 
     - name: Create outputs.conf file
       copy:
@@ -226,17 +231,16 @@
           [tcpout]
           defaultGroup = group1
         mode: '0644'
-      ignore_errors: yes  # Ensures the playbook does not exit immediately
+      
 
     - name: List directory contents for verification
       command: "ls -l /opt/splunk/etc/deployment-apps/ORG_general_infra_config/local"
       register: ls_output
-      ignore_errors: yes  # Ensures the playbook does not exit immediately
+      
 
     - name: Display directory contents
       debug:
         msg: "{{ ls_output.stdout_lines }}"
-      ignore_errors: yes # Ensures the playbook does not exit immediately
 
    
     - name: restart
@@ -247,7 +251,7 @@
 
 - name: Configure Splunk Search Head Cluster Apps
   hosts: Deployer
-  gather_facts: no
+  gather_facts: yes
   become: yes
   become_user: splunk 
   tasks:
@@ -256,7 +260,6 @@
         path: "/opt/splunk/etc/shcluster/apps/ORG_general_infra_config/local"
         state: directory
         mode: '0755'
-      ignore_errors: yes # Ensures the playbook does not exit immediately
       
 
     - name: Create outputs.conf file
@@ -274,33 +277,32 @@
           [tcpout]
           defaultGroup = group1
         mode: '0644'
-      ignore_errors: yes # Ensures the playbook does not exit immediately
       
 
     - name: List directory contents for verification
       command: "ls -l /opt/splunk/etc/shcluster/apps/ORG_general_infra_config/local"
       register: ls_output
-      ignore_errors: yes # Ensures the playbook does not exit immediately
 
 
     - name: Display directory contents
       debug:
         msg: "{{ ls_output.stdout_lines }}"
-      ignore_errors: yes # Ensures the playbook does not exit immediately
-      
+    
+    - name: Pause
+      run_once: true
+      pause:
+        seconds: 10
 
     - name: Apply Search Head Cluster Bundle
       command: |
         /opt/splunk/bin/splunk apply shcluster-bundle --answer-yes \
         -target https://{{ search_heads.SH1.private_ip }}:8089 -auth admin:{{ splunk_admin_password }}
       register: shcluster_output
-      ignore_errors: yes # Ensures the playbook does not exit immediately
       
 
     - name: Display shcluster bundle apply output
       debug:
         msg: "{{ shcluster_output.stdout_lines }}"
-      ignore_errors: yes # Ensures the playbook does not exit immediately
 
    
     - name: restart
@@ -320,7 +322,7 @@
         path: "/opt/splunk/etc/apps/ORG_general_infra_config/local"
         state: directory
         mode: '0755'
-      ignore_errors: yes  # Ensures the playbook does not exit immediately
+      
 
     - name: Create outputs.conf file
       copy:
