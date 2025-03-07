@@ -5,7 +5,10 @@
 # .tfstate files
 *.tfstate
 *.tfstate.*
-output.txt
+*.txt
+*.pem
+
+group_vars/all.yml
 
 
 # Crash log files
