@@ -7,7 +7,7 @@
 *.tfstate.*
 *.txt
 *.pem
-
+*.ini
 group_vars/all.yml
 
 
