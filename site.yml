@@ -291,7 +291,7 @@
     - name: Pause
       run_once: true
       pause:
-        seconds: 10
+        seconds: 30
 
     - name: Apply Search Head Cluster Bundle
       command: |
@@ -354,3 +354,16 @@
       become_user: root
       command:
             cmd: /opt/splunk/bin/splunk restart
+
+    - name: Pause
+      run_once: true
+      pause:
+        seconds: 30
+
+- name: Enable Indexer Cluster
+  hosts: ClusterManager
+  gather_facts: no
+  become: yes
+  tasks:
+    - name: Include tasks from enable_indexer.yml
+      include_tasks: enable_indexer.yml
