@@ -40,7 +40,7 @@
     - name: Pause
       run_once: true
       pause:
-        seconds: 50
+        seconds: 40
 
 
 - hosts: ClusterManager
@@ -56,14 +56,12 @@
     - name: Debug Cluster Config Output
       debug:
         var: cluster_output
-     
+    
     - name: splunk restart for Configuring Manager Node
       become: yes
       become_user: root
       command:
         cmd: /opt/splunk/bin/splunk restart
-      
-
            
 - hosts: indexers
   tasks:
@@ -73,7 +71,6 @@
       command:
         cmd: /opt/splunk/bin/splunk edit cluster-config -mode peer -manager_uri https://{{ ClusterManager.private_ip }}:8089 -replication_port 9887 -secret SoftManiaKey -auth admin:{{ splunk_admin_password }} --accept-license --no-prompt
 
-   
     - name: splunk restart for Configuring Manager Node
       become: yes
       become_user: root
@@ -93,7 +90,6 @@
             pass4SymmKey = SoftManiaSHClusterKey
             shcluster_label = shcluster1
 
-   
     - name: restart
       become: yes
       become_user: root
@@ -110,7 +106,6 @@
     - name: configure search peer 
       command: /opt/splunk/bin/splunk init shcluster-config -auth admin:{{ splunk_admin_password }} -mgmt_uri https://{{ search_heads.SH1.private_ip }}:8089 -replication_port 9000 -replication_factor 3 -conf_deploy_fetch_url http://{{ Deployer.private_ip }}:8089 -secret SoftManiaSHClusterKey -shcluster_label shcluster1 --accept-license --no-prompt
 
-       
     - name: restart splunk
       command: /opt/splunk/bin/splunk restart
 
@@ -124,7 +119,6 @@
     - name: configure search peer 
       command: /opt/splunk/bin/splunk init shcluster-config -auth admin:{{ splunk_admin_password }} -mgmt_uri https://{{ search_heads.SH2.private_ip }}:8089 -replication_port 9000 -replication_factor 3 -conf_deploy_fetch_url http://{{ Deployer.private_ip }}:8089 -secret SoftManiaSHClusterKey -shcluster_label shcluster1
 
-   
     - name: restart splunk
       command: /opt/splunk/bin/splunk restart
 
@@ -138,7 +132,6 @@
     - name: configure search peer 
       command: /opt/splunk/bin/splunk init shcluster-config -auth admin:{{ splunk_admin_password }} -mgmt_uri https://{{ search_heads.SH3.private_ip }}:8089 -replication_port 9000 -replication_factor 3 -conf_deploy_fetch_url http://{{ Deployer.private_ip }}:8089 -secret SoftManiaSHClusterKey -shcluster_label shcluster1
 
-   
     - name: restart splunk
       command: /opt/splunk/bin/splunk restart
     
@@ -155,7 +148,6 @@
   tasks:
     - name: Making cluster captain
       command: /opt/splunk/bin/splunk bootstrap shcluster-captain -servers_list "https://{{ search_heads.SH1.private_ip }}:8089,https://{{ search_heads.SH2.private_ip }}:8089,https://{{ search_heads.SH3.private_ip }}:8089" -auth admin:{{ splunk_admin_password }}
-
    
 - hosts: IFs
   user: splunk
@@ -164,7 +156,6 @@
     - name: Configure Intermediate Forwarders
       command: /opt/splunk/bin/splunk set deploy-poll {{ Deployment_Server.private_ip }}:8089 -auth admin:{{ splunk_admin_password }}
 
-   
     - name: restart splunk
       command: /opt/splunk/bin/splunk restart
 
@@ -176,8 +167,7 @@
   tasks:
     - name: configure indexer cluster with search head 
       command : /opt/splunk/bin/splunk edit cluster-config -mode searchhead -manager_uri https://{{ ClusterManager.private_ip }}:8089 -secret SoftManiaKey -auth admin:{{ splunk_admin_password }}
-
-   
+    
     - name: restart
       become: yes
       become_user: root
@@ -242,7 +232,6 @@
       debug:
         msg: "{{ ls_output.stdout_lines }}"
 
-   
     - name: restart
       become: yes
       become_user: root
@@ -367,3 +356,109 @@
   tasks:
     - name: Include tasks from enable_indexer.yml
       include_tasks: enable_indexer.yml
+
+- hosts: indexers
+  tasks:
+    - name: License configureation-2
+      become_user: splunk
+      shell: "/opt/splunk/bin/splunk edit licenser-localslave -master_uri https://{{ Management_server.private_ip }}:8089 -auth admin:{{ splunk_admin_password }} --answer-yes"
+      args:
+        executable: /bin/bash
+
+    - name: admin user create
+      become_user: splunk
+      shell: "/opt/splunk/bin/splunk add user service_admin -password SoftMania123 -role admin -auth admin:{{ splunk_admin_password }}"
+      args:
+        executable: /bin/bash
+
+- hosts: Deployer
+  gather_facts: no
+  tasks:
+    - name: License configureation
+      become_user: splunk
+      shell: "/opt/splunk/bin/splunk edit licenser-localslave -master_uri https://{{ Management_server.private_ip }}:8089 -auth admin:{{ splunk_admin_password }} --answer-yes"
+      args:
+        executable: /bin/bash
+
+    - name: admin user create
+      become_user: splunk
+      shell: "/opt/splunk/bin/splunk add user service_admin -password SoftMania123 -role admin -auth admin:{{ splunk_admin_password }}"
+      args:
+        executable: /bin/bash
+
+- hosts: IFs
+  user: splunk
+  become: yes
+  tasks:
+    - name: License configureation-1
+      become_user: splunk
+      shell: "/opt/splunk/bin/splunk edit licenser-localslave -master_uri https://{{ Management_server.private_ip }}:8089 -auth admin:{{ splunk_admin_password }} --answer-yes"
+      args:
+        executable: /bin/bash
+
+- name: Connect Search Head Cluster with Indexer Cluster
+  hosts: search_heads
+  gather_facts: no
+  become_user: splunk
+  become: yes
+  tasks:
+    - name: License configureation
+      become_user: splunk
+      shell: "/opt/splunk/bin/splunk edit licenser-localslave -master_uri https://{{ Management_server.private_ip }}:8089 -auth admin:{{ splunk_admin_password }} --answer-yes"
+      args:
+        executable: /bin/bash
+
+    - name: admin user create
+      become_user: splunk
+      shell: "/opt/splunk/bin/splunk add user service_admin -password SoftMania123 -role admin -auth admin:{{ splunk_admin_password }}"
+      args:
+        executable: /bin/bash
+
+- hosts: ClusterManager
+  become: yes
+  become_user: root
+  tasks:
+    - name: License configureation
+      become_user: splunk
+      shell: "/opt/splunk/bin/splunk edit licenser-localslave -master_uri https://{{ Management_server.private_ip }}:8089 -auth admin:{{ splunk_admin_password }} --answer-yes"
+      args:
+        executable: /bin/bash
+
+    - name: admin user create
+      become_user: splunk
+      shell: "/opt/splunk/bin/splunk add user service_admin -password SoftMania123 -role admin -auth admin:{{ splunk_admin_password }}"
+      args:
+        executable: /bin/bash
+     
+
+- name: Configure Splunk Deployment Apps
+  hosts: Deployment_Server
+  gather_facts: no
+  become: yes
+  become_user: splunk
+  tasks:
+    - name: License configureation
+      become_user: splunk
+      shell: "/opt/splunk/bin/splunk edit licenser-localslave -master_uri https://{{ Management_server.private_ip }}:8089 -auth admin:{{ splunk_admin_password }} --answer-yes"
+      args:
+        executable: /bin/bash
+
+    - name: admin user create
+      become_user: splunk
+      shell: "/opt/splunk/bin/splunk add user service_admin -password SoftMania123 -role admin -auth admin:{{ splunk_admin_password }}"
+      args:
+        executable: /bin/bash
+   
+
+
+- name: Configure Splunk search servers
+  hosts: all:!Management_server  # Exclude Management Server
+  become: yes
+  become_user: splunk
+  tasks:
+    - name: Add search servers to Splunk
+      shell: |
+        /opt/splunk/bin/splunk add search-server https://{{ hostvars[item].ansible_host }}:8089 \
+        -auth admin:password -remoteUsername service_admin -remotePassword SoftMania123
+      loop: "{{ groups['all'] | difference(groups['Management_server']) }}"
+      when: hostvars[item].ansible_host is defined
