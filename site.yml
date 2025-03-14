@@ -412,6 +412,8 @@
         /opt/splunk/bin/splunk edit licenser-localslave -master_uri https://{{ private_ip }}:8089 -auth admin:{{ all_data['splunk_admin_password'] }}
       when: inventory_hostname != 'Management_server'
 
+    - name: Restart components
+      command: /opt/splunk/bin/splunk restart  
 
 - name: Configure Splunk Users and Search Server
   hosts: all_splunk:!IFs  # Exclude Intermediate Forwarders (IFs), SH2, and SH3 manually
@@ -436,6 +438,9 @@
         path: /opt/splunk/var/run/service_admin_added
         state: touch
       when: add_user_result.changed
+    
+    - name: Restart components
+      command: /opt/splunk/bin/splunk restart  
 
 - name: Add all components as search peers to Management Server
   hosts: Management_server  # Run only on Management Server
