@@ -394,3 +394,74 @@
       command: >
         /opt/splunk/bin/splunk edit licenser-localslave -master_uri https://{{ private_ip }}:8089 -auth admin:{{ all_data['splunk_admin_password'] }}
       when: inventory_hostname != 'Management_server'
+
+
+- name: Configure Splunk Users and Search Server
+  hosts: all_splunk:!IFs  # Exclude Intermediate Forwarders (IFs), SH2, and SH3 manually
+  become: yes
+  tasks:
+
+    - name: Exclude SH2 and SH3
+      meta: end_host
+      when: inventory_hostname in ["SH2", "SH3"]
+
+    - name: Add service_admin user to Splunk
+      command: >
+        /opt/splunk/bin/splunk add user service_admin -password SoftMania123
+        -role admin -auth admin:{{ splunk_admin_password }}
+      args:
+        creates: /opt/splunk/var/run/service_admin_added
+      register: add_user_result
+      changed_when: "'already exists' not in add_user_result.stderr"
+
+    - name: Mark service_admin as added
+      file:
+        path: /opt/splunk/var/run/service_admin_added
+        state: touch
+      when: add_user_result.changed
+
+- name: Add all components as search peers to Management Server
+  hosts: Management_server  # Run only on Management Server
+  become: yes
+  vars:
+    components_dict: >-
+      {{
+        indexers | combine(search_heads) | combine({"ClusterManager": ClusterManager}) |
+        combine({"Deployment_Server": Deployment_Server}) | combine({"Deployer": Deployer}) |
+        combine(IFs)
+      }}
+    components_ips: >-
+      {{
+        components_dict | dict2items
+        | rejectattr('key', 'equalto', 'Management_server')
+        | rejectattr('key', 'equalto', 'IF1')
+        | rejectattr('key', 'equalto', 'IF2')
+        | list
+      }}
+  tasks:
+
+    - name: Debug components (name and IP)
+      debug:
+        msg: "{{ item.key }} → {{ item.value.private_ip }}"
+      loop: "{{ components_ips }}"
+
+    - name: Get list of existing search peers
+      command: "/opt/splunk/bin/splunk list search-server -auth admin:{{ splunk_admin_password }}"
+      register: existing_peers
+      changed_when: false
+      failed_when: existing_peers.rc != 0
+
+    - name: Debug existing search peers
+      debug:
+        msg: "{{ existing_peers.stdout_lines }}"
+
+    - name: Add each component as a search peer if not already added
+      command: >
+        /opt/splunk/bin/splunk add search-server https://{{ item.value.private_ip }}:8089 
+        -auth admin:{{ splunk_admin_password }} 
+        -remoteUsername service_admin 
+        -remotePassword SoftMania123
+      loop: "{{ components_ips }}"
+      when: "item.value.private_ip not in existing_peers.stdout"
+      register: add_search_server_result
+      changed_when: "'already exists' not in add_search_server_result.stderr"
