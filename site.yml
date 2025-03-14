@@ -1,6 +1,7 @@
 ---
 - name: Setup Splunk Cluster Environment
   hosts: all
+  gather_facts: no
   become: yes
   vars_files:
     - group_vars/all.yml
@@ -31,16 +32,28 @@
       args:
         executable: /bin/bash
 
-    - name: splunk restart for all servers
-      become: yes
-      become_user: root
-      command:
-        cmd: /opt/splunk/bin/splunk restart
+- name: Setup Splunk Cluster Environment
+  hosts: all
+  gather_facts: no
+  become: yes
+  tasks:
+    - name: Format hostname for banner
+      set_fact:
+        banner_name: "{{ inventory_hostname | regex_replace('[._\"]', ' ') | trim }}"
 
-    - name: Pause
-      run_once: true
-      pause:
-        seconds: 50
+    - name: Set Global Banner Configuration
+      copy:
+        dest: /opt/splunk/etc/system/local/global-banner.conf
+        content: |
+          [BANNER_MESSAGE_SINGLETON]
+          global_banner.visible = true
+          global_banner.message = "{{ banner_name }}"
+          global_banner.background_color = green
+      notify: Restart Splunk
+
+  handlers:
+    - name: Restart Splunk
+      command: /opt/splunk/bin/splunk restart
 
 
 - hosts: ClusterManager
@@ -56,14 +69,12 @@
     - name: Debug Cluster Config Output
       debug:
         var: cluster_output
-     
+    
     - name: splunk restart for Configuring Manager Node
       become: yes
       become_user: root
       command:
         cmd: /opt/splunk/bin/splunk restart
-      
-
            
 - hosts: indexers
   tasks:
@@ -73,7 +84,6 @@
       command:
         cmd: /opt/splunk/bin/splunk edit cluster-config -mode peer -manager_uri https://{{ ClusterManager.private_ip }}:8089 -replication_port 9887 -secret SoftManiaKey -auth admin:{{ splunk_admin_password }} --accept-license --no-prompt
 
-   
     - name: splunk restart for Configuring Manager Node
       become: yes
       become_user: root
@@ -93,7 +103,6 @@
             pass4SymmKey = SoftManiaSHClusterKey
             shcluster_label = shcluster1
 
-   
     - name: restart
       become: yes
       become_user: root
@@ -110,7 +119,6 @@
     - name: configure search peer 
       command: /opt/splunk/bin/splunk init shcluster-config -auth admin:{{ splunk_admin_password }} -mgmt_uri https://{{ search_heads.SH1.private_ip }}:8089 -replication_port 9000 -replication_factor 3 -conf_deploy_fetch_url http://{{ Deployer.private_ip }}:8089 -secret SoftManiaSHClusterKey -shcluster_label shcluster1 --accept-license --no-prompt
 
-       
     - name: restart splunk
       command: /opt/splunk/bin/splunk restart
 
@@ -124,7 +132,6 @@
     - name: configure search peer 
       command: /opt/splunk/bin/splunk init shcluster-config -auth admin:{{ splunk_admin_password }} -mgmt_uri https://{{ search_heads.SH2.private_ip }}:8089 -replication_port 9000 -replication_factor 3 -conf_deploy_fetch_url http://{{ Deployer.private_ip }}:8089 -secret SoftManiaSHClusterKey -shcluster_label shcluster1
 
-   
     - name: restart splunk
       command: /opt/splunk/bin/splunk restart
 
@@ -138,14 +145,13 @@
     - name: configure search peer 
       command: /opt/splunk/bin/splunk init shcluster-config -auth admin:{{ splunk_admin_password }} -mgmt_uri https://{{ search_heads.SH3.private_ip }}:8089 -replication_port 9000 -replication_factor 3 -conf_deploy_fetch_url http://{{ Deployer.private_ip }}:8089 -secret SoftManiaSHClusterKey -shcluster_label shcluster1
 
-   
     - name: restart splunk
       command: /opt/splunk/bin/splunk restart
     
     - name: Pause to SH1 is restarting
       run_once: true
       pause:
-        seconds: 60
+        seconds: 20
 
 - name: shc 1 captain
   hosts: SH1
@@ -155,7 +161,6 @@
   tasks:
     - name: Making cluster captain
       command: /opt/splunk/bin/splunk bootstrap shcluster-captain -servers_list "https://{{ search_heads.SH1.private_ip }}:8089,https://{{ search_heads.SH2.private_ip }}:8089,https://{{ search_heads.SH3.private_ip }}:8089" -auth admin:{{ splunk_admin_password }}
-
    
 - hosts: IFs
   user: splunk
@@ -164,7 +169,6 @@
     - name: Configure Intermediate Forwarders
       command: /opt/splunk/bin/splunk set deploy-poll {{ Deployment_Server.private_ip }}:8089 -auth admin:{{ splunk_admin_password }}
 
-   
     - name: restart splunk
       command: /opt/splunk/bin/splunk restart
 
@@ -176,8 +180,7 @@
   tasks:
     - name: configure indexer cluster with search head 
       command : /opt/splunk/bin/splunk edit cluster-config -mode searchhead -manager_uri https://{{ ClusterManager.private_ip }}:8089 -secret SoftManiaKey -auth admin:{{ splunk_admin_password }}
-
-   
+    
     - name: restart
       become: yes
       become_user: root
@@ -242,7 +245,6 @@
       debug:
         msg: "{{ ls_output.stdout_lines }}"
 
-   
     - name: restart
       become: yes
       become_user: root
@@ -367,3 +369,119 @@
   tasks:
     - name: Include tasks from enable_indexer.yml
       include_tasks: enable_indexer.yml
+
+   
+- name: Configure License Server
+  hosts: Management_server
+  become: yes
+  tasks:
+
+    - name: Run Splunk first-time setup
+      command: /opt/splunk/bin/splunk ftr --accept-license
+      become: yes
+      become_user: splunk
+
+    - name: Download Splunk License File to License Server
+      get_url:
+        url: "{{ splunk_license_url }}"
+        dest: /opt/splunk/etc/licenses/developer-license.lic
+        mode: '0644'  # Set proper permissions
+
+    - name: Apply License on License Server
+      command: /opt/splunk/bin/splunk add license /opt/splunk/etc/licenses/developer-license.lic -auth admin:{{ splunk_admin_password }}
+
+    - name: Restart Splunk to Apply License
+      command: /opt/splunk/bin/splunk restart
+
+- hosts: all_splunk
+  gather_facts: no
+  become: yes
+  become_user: splunk
+  tasks:
+    - name: Load all.yml variables
+      include_vars:
+        file: group_vars/all.yml
+        name: all_data
+
+    - name: Assign Management Server Private IP
+      set_fact:
+        private_ip: "{{ all_data['Management_server']['private_ip'] }}"
+      
+    - name: Configure Splunk License Slave
+      command: >
+        /opt/splunk/bin/splunk edit licenser-localslave -master_uri https://{{ private_ip }}:8089 -auth admin:{{ all_data['splunk_admin_password'] }}
+      when: inventory_hostname != 'Management_server'
+
+
+- name: Configure Splunk Users and Search Server
+  hosts: all_splunk:!IFs  # Exclude Intermediate Forwarders (IFs), SH2, and SH3 manually
+  become: yes
+  tasks:
+
+    - name: Exclude SH2 and SH3
+      meta: end_host
+      when: inventory_hostname in ["SH2", "SH3"]
+
+    - name: Add service_admin user to Splunk
+      command: >
+        /opt/splunk/bin/splunk add user service_admin -password SoftMania123
+        -role admin -auth admin:{{ splunk_admin_password }}
+      args:
+        creates: /opt/splunk/var/run/service_admin_added
+      register: add_user_result
+      changed_when: "'already exists' not in add_user_result.stderr"
+
+    - name: Mark service_admin as added
+      file:
+        path: /opt/splunk/var/run/service_admin_added
+        state: touch
+      when: add_user_result.changed
+
+- name: Add all components as search peers to Management Server
+  hosts: Management_server  # Run only on Management Server
+  become: yes
+  vars:
+    components_dict: >-
+      {{
+        indexers | combine(search_heads) | combine({"ClusterManager": ClusterManager}) |
+        combine({"Deployment_Server": Deployment_Server}) | combine({"Deployer": Deployer}) |
+        combine(IFs)
+      }}
+    components_ips: >-
+      {{
+        components_dict | dict2items
+        | rejectattr('key', 'equalto', 'Management_server')
+        | rejectattr('key', 'equalto', 'IF1')
+        | rejectattr('key', 'equalto', 'IF2')
+        | list
+      }}
+  tasks:
+
+    - name: Debug components (name and IP)
+      debug:
+        msg: "{{ item.key }} → {{ item.value.private_ip }}"
+      loop: "{{ components_ips }}"
+
+    - name: Get list of existing search peers
+      command: "/opt/splunk/bin/splunk list search-server -auth admin:{{ splunk_admin_password }}"
+      register: existing_peers
+      changed_when: false
+      failed_when: existing_peers.rc != 0
+
+    - name: Debug existing search peers
+      debug:
+        msg: "{{ existing_peers.stdout_lines }}"
+
+    - name: Add each component as a search peer if not already added
+      command: >
+        /opt/splunk/bin/splunk add search-server https://{{ item.value.private_ip }}:8089 
+        -auth admin:{{ splunk_admin_password }} 
+        -remoteUsername service_admin 
+        -remotePassword SoftMania123
+      loop: "{{ components_ips }}"
+      when: "item.value.private_ip not in existing_peers.stdout"
+      register: add_search_server_result
+      changed_when: "'already exists' not in add_search_server_result.stderr"
+
+    - name: Restart components
+      command: /opt/splunk/bin/splunk restart  

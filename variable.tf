@@ -4,6 +4,10 @@ variable "region" {
     description = "mention your region. if you change region must change ami name & key-pair"
 }
 
+variable "splunk_license_url" {
+  type    = string
+}
+
 # Variable for AMI ID
 variable "ami_map" {
   type        = map(string)
@@ -54,3 +58,11 @@ variable "ssh_public_key" {
   type        = string
 }
 
+
+variable "aws_secret_key" {
+  type        = string
+}
+
+variable "aws_access_key" {
+  type        = string
+}
