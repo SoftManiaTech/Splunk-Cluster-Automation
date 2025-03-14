@@ -38,11 +38,6 @@
       command:
         cmd: /opt/splunk/bin/splunk restart
 
-    - name: Pause
-      run_once: true
-      pause:
-        seconds: 40
-
 
 - hosts: ClusterManager
   become: yes
@@ -139,7 +134,7 @@
     - name: Pause to SH1 is restarting
       run_once: true
       pause:
-        seconds: 60
+        seconds: 20
 
 - name: shc 1 captain
   hosts: SH1
@@ -371,7 +366,7 @@
 
     - name: Download Splunk License File to License Server
       get_url:
-        url: "https://drive.google.com/uc?id=1di5R8oHXKXEb9EUAK_mcH7a4-8XP87Fi&export=download"
+        url: "{{ splunk_license_url }}"
         dest: /opt/splunk/etc/licenses/developer-license.lic
         mode: '0644'  # Set proper permissions
 

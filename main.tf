@@ -142,6 +142,7 @@ resource "local_file" "ansible_group_vars" {
     Management_server    = [for instance in aws_instance.splunk_server : { private_ip = instance.private_ip, instance_id = instance.id } if instance.tags["Name"] == "Management_server"]
     deployer          = [for instance in aws_instance.splunk_server : { private_ip = instance.private_ip, instance_id = instance.id } if instance.tags["Name"] == "Deployer"]
     ifs              = { for instance in aws_instance.splunk_server : instance.tags["Name"] => { private_ip = instance.private_ip, instance_id = instance.id } if startswith(instance.tags["Name"], "IF") }
+    splunk_license_url = "${var.splunk_license_url}"
     splunk_admin_password = "admin123"
   })
 }
