@@ -32,11 +32,28 @@
       args:
         executable: /bin/bash
 
-    - name: splunk restart for all servers
-      become: yes
-      become_user: root
-      command:
-        cmd: /opt/splunk/bin/splunk restart
+- name: Setup Splunk Cluster Environment
+  hosts: all
+  gather_facts: no
+  become: yes
+  tasks:
+    - name: Format hostname for banner
+      set_fact:
+        banner_name: "{{ inventory_hostname | regex_replace('[._\"]', ' ') | trim }}"
+
+    - name: Set Global Banner Configuration
+      copy:
+        dest: /opt/splunk/etc/system/local/global-banner.conf
+        content: |
+          [BANNER_MESSAGE_SINGLETON]
+          global_banner.visible = true
+          global_banner.message = "{{ banner_name }}"
+          global_banner.background_color = green
+      notify: Restart Splunk
+
+  handlers:
+    - name: Restart Splunk
+      command: /opt/splunk/bin/splunk restart
 
 
 - hosts: ClusterManager
@@ -465,3 +482,6 @@
       when: "item.value.private_ip not in existing_peers.stdout"
       register: add_search_server_result
       changed_when: "'already exists' not in add_search_server_result.stderr"
+
+    - name: Restart components
+      command: /opt/splunk/bin/splunk restart  
