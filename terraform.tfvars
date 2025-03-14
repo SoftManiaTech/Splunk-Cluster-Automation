@@ -3,7 +3,9 @@ aws_secret_key = "<aws_secret_key>"
 
 region = "us-east-2"
 
-splunk_license_url = "<ansible_server_public_ssh_key>"
+splunk_license_url = "<splunk develoepr license link>"
+
+ssh_public_key = "<ansible_server_public_ssh_key>"
 
 instances = [
   {
