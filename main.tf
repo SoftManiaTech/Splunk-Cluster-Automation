@@ -118,6 +118,14 @@ resource "local_file" "ansible_inventory" {
     "[IFs]",
     [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} instance_id=${aws_instance.splunk_server[idx].id} ansible_user=ec2-user" if instance.name == "IF1"],
     [for idx, instance in var.instances : "${instance.name} ansible_host=${lookup(aws_eip.splunk_eip, idx, { public_ip = aws_instance.splunk_server[idx].public_ip }).public_ip} instance_id=${aws_instance.splunk_server[idx].id} ansible_user=ec2-user" if instance.name == "IF2"],
+
+    "[all_splunk:children]",
+    "ClusterManager",
+    "indexers",
+    "search_heads",
+    "Deployment_Server",
+    "Deployer",
+    "IFs",
   ]))
 }
 

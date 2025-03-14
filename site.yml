@@ -1,6 +1,7 @@
 ---
 - name: Setup Splunk Cluster Environment
   hosts: all
+  gather_facts: no
   become: yes
   vars_files:
     - group_vars/all.yml
@@ -357,108 +358,44 @@
     - name: Include tasks from enable_indexer.yml
       include_tasks: enable_indexer.yml
 
-- hosts: indexers
-  tasks:
-    - name: License configureation-2
-      become_user: splunk
-      shell: "/opt/splunk/bin/splunk edit licenser-localslave -master_uri https://{{ Management_server.private_ip }}:8089 -auth admin:{{ splunk_admin_password }} --answer-yes"
-      args:
-        executable: /bin/bash
-
-    - name: admin user create
-      become_user: splunk
-      shell: "/opt/splunk/bin/splunk add user service_admin -password SoftMania123 -role admin -auth admin:{{ splunk_admin_password }}"
-      args:
-        executable: /bin/bash
-
-- hosts: Deployer
-  gather_facts: no
-  tasks:
-    - name: License configureation
-      become_user: splunk
-      shell: "/opt/splunk/bin/splunk edit licenser-localslave -master_uri https://{{ Management_server.private_ip }}:8089 -auth admin:{{ splunk_admin_password }} --answer-yes"
-      args:
-        executable: /bin/bash
-
-    - name: admin user create
-      become_user: splunk
-      shell: "/opt/splunk/bin/splunk add user service_admin -password SoftMania123 -role admin -auth admin:{{ splunk_admin_password }}"
-      args:
-        executable: /bin/bash
-
-- hosts: IFs
-  user: splunk
-  become: yes
-  tasks:
-    - name: License configureation-1
-      become_user: splunk
-      shell: "/opt/splunk/bin/splunk edit licenser-localslave -master_uri https://{{ Management_server.private_ip }}:8089 -auth admin:{{ splunk_admin_password }} --answer-yes"
-      args:
-        executable: /bin/bash
-
-- name: Connect Search Head Cluster with Indexer Cluster
-  hosts: search_heads
-  gather_facts: no
-  become_user: splunk
-  become: yes
-  tasks:
-    - name: License configureation
-      become_user: splunk
-      shell: "/opt/splunk/bin/splunk edit licenser-localslave -master_uri https://{{ Management_server.private_ip }}:8089 -auth admin:{{ splunk_admin_password }} --answer-yes"
-      args:
-        executable: /bin/bash
-
-    - name: admin user create
-      become_user: splunk
-      shell: "/opt/splunk/bin/splunk add user service_admin -password SoftMania123 -role admin -auth admin:{{ splunk_admin_password }}"
-      args:
-        executable: /bin/bash
-
-- hosts: ClusterManager
-  become: yes
-  become_user: root
-  tasks:
-    - name: License configureation
-      become_user: splunk
-      shell: "/opt/splunk/bin/splunk edit licenser-localslave -master_uri https://{{ Management_server.private_ip }}:8089 -auth admin:{{ splunk_admin_password }} --answer-yes"
-      args:
-        executable: /bin/bash
-
-    - name: admin user create
-      become_user: splunk
-      shell: "/opt/splunk/bin/splunk add user service_admin -password SoftMania123 -role admin -auth admin:{{ splunk_admin_password }}"
-      args:
-        executable: /bin/bash
-     
-
-- name: Configure Splunk Deployment Apps
-  hosts: Deployment_Server
-  gather_facts: no
-  become: yes
-  become_user: splunk
-  tasks:
-    - name: License configureation
-      become_user: splunk
-      shell: "/opt/splunk/bin/splunk edit licenser-localslave -master_uri https://{{ Management_server.private_ip }}:8089 -auth admin:{{ splunk_admin_password }} --answer-yes"
-      args:
-        executable: /bin/bash
-
-    - name: admin user create
-      become_user: splunk
-      shell: "/opt/splunk/bin/splunk add user service_admin -password SoftMania123 -role admin -auth admin:{{ splunk_admin_password }}"
-      args:
-        executable: /bin/bash
    
+- name: Configure License Server
+  hosts: Management_server
+  become: yes
+  tasks:
 
+    - name: Run Splunk first-time setup
+      command: /opt/splunk/bin/splunk ftr --accept-license
+      become: yes
+      become_user: splunk
 
-- name: Configure Splunk search servers
-  hosts: all:!Management_server  # Exclude Management Server
+    - name: Download Splunk License File to License Server
+      get_url:
+        url: "https://drive.google.com/uc?id=1di5R8oHXKXEb9EUAK_mcH7a4-8XP87Fi&export=download"
+        dest: /opt/splunk/etc/licenses/developer-license.lic
+        mode: '0644'  # Set proper permissions
+
+    - name: Apply License on License Server
+      command: /opt/splunk/bin/splunk add license /opt/splunk/etc/licenses/developer-license.lic -auth admin:{{ splunk_admin_password }}
+
+    - name: Restart Splunk to Apply License
+      command: /opt/splunk/bin/splunk restart
+
+- hosts: all_splunk
+  gather_facts: no
   become: yes
   become_user: splunk
   tasks:
-    - name: Add search servers to Splunk
-      shell: |
-        /opt/splunk/bin/splunk add search-server https://{{ hostvars[item].ansible_host }}:8089 \
-        -auth admin:password -remoteUsername service_admin -remotePassword SoftMania123
-      loop: "{{ groups['all'] | difference(groups['Management_server']) }}"
-      when: hostvars[item].ansible_host is defined
+    - name: Load all.yml variables
+      include_vars:
+        file: group_vars/all.yml
+        name: all_data
+
+    - name: Assign Management Server Private IP
+      set_fact:
+        private_ip: "{{ all_data['Management_server']['private_ip'] }}"
+      
+    - name: Configure Splunk License Slave
+      command: >
+        /opt/splunk/bin/splunk edit licenser-localslave -master_uri https://{{ private_ip }}:8089 -auth admin:{{ all_data['splunk_admin_password'] }}
+      when: inventory_hostname != 'Management_server'
