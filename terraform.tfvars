@@ -10,10 +10,10 @@ ssh_public_key = "<ansible_server_public_ssh_key>"
 instances = [
   {
     name              = "ClusterManager"
-    region            = "us-east-2"
+    region            = "us-east-2" # example ( us-east-2)
     instance_type     = "t2.medium"
     storage_size      = 30
-    key_name          = "<private_pem_key_name>" # example (ap-southeast-1)
+    key_name          = "<private_pem_key_name>" # example (t-singapore)
     elastic_ip_needed = true
     security_group_rules = [
     { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] },
@@ -31,10 +31,10 @@ instances = [
   }, 
   {
     name              = "idx1"
-    region            = "us-east-2"
+    region            = "us-east-2" # example ( us-east-2)
     instance_type     = "t2.medium"
     storage_size      = 30
-    key_name          = "<private_pem_key_name>" # example (ap-southeast-1)
+    key_name          = "<private_pem_key_name>" # example (t-singapore)
     elastic_ip_needed = false
     security_group_rules = [
     { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] },
@@ -52,10 +52,10 @@ instances = [
   },
   {
     name              = "idx2"
-    region            = "us-east-2"
+    region            = "us-east-2" # example ( us-east-2)
     instance_type     = "t2.medium"
     storage_size      = 30
-    key_name          = "<private_pem_key_name>" # example (ap-southeast-1)
+    key_name          = "<private_pem_key_name>" # example (t-singapore)
     elastic_ip_needed = false
     security_group_rules = [
     { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] },
@@ -73,10 +73,10 @@ instances = [
   },
   {
     name              = "idx3"
-    region            = "us-east-2"
+    region            = "us-east-2" # example ( us-east-2)
     instance_type     = "t2.medium"
     storage_size      = 30
-    key_name          = "<private_pem_key_name>" # example (ap-southeast-1)
+    key_name          = "<private_pem_key_name>" # example (t-singapore)
     elastic_ip_needed = false
     security_group_rules = [
     { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] },
@@ -94,10 +94,10 @@ instances = [
   },
   {
     name              = "Deployer"
-    region            = "us-east-2"
+    region            = "us-east-2" # example ( us-east-2)
     instance_type     = "t2.medium"
     storage_size      = 30
-    key_name          = "<private_pem_key_name>" # example (ap-southeast-1)
+    key_name          = "<private_pem_key_name>" # example (t-singapore)
     elastic_ip_needed = false
     security_group_rules = [
     { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] },
@@ -115,10 +115,10 @@ instances = [
   },
   {
     name              = "SH1"
-    region            = "us-east-2"
+    region            = "us-east-2" # example ( us-east-2)
     instance_type     = "t2.medium"
     storage_size      = 30
-    key_name          = "<private_pem_key_name>" # example (ap-southeast-1)
+    key_name          = "<private_pem_key_name>" # example (t-singapore)
     elastic_ip_needed = false
     security_group_rules = [
     { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] },
@@ -136,10 +136,10 @@ instances = [
   },
   {
     name              = "SH2"
-    region            = "us-east-2"
+    region            = "us-east-2" # example ( us-east-2)
     instance_type     = "t2.medium"
     storage_size      = 30
-    key_name          = "<private_pem_key_name>" # example (ap-southeast-1)
+    key_name          = "<private_pem_key_name>" # example (t-singapore)
     elastic_ip_needed = false
     security_group_rules = [
     { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] },
@@ -157,10 +157,10 @@ instances = [
   },
   {
     name              = "SH3"
-    region            = "us-east-2"
+    region            = "us-east-2" # example ( us-east-2)
     instance_type     = "t2.medium"
     storage_size      = 30
-    key_name          = "<private_pem_key_name>" # example (ap-southeast-1)
+    key_name          = "<private_pem_key_name>" # example (t-singapore)
     elastic_ip_needed = false
     security_group_rules = [
     { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] },
@@ -178,10 +178,10 @@ instances = [
   },
   {
     name              = "Deployment-Server"
-    region            = "us-east-2"
+    region            = "us-east-2" # example ( us-east-2) 
     instance_type     = "t2.medium"
     storage_size      = 30
-    key_name          = "<private_pem_key_name>" # example (ap-southeast-1)
+    key_name          = "<private_pem_key_name>" # example (t-singapore)
     elastic_ip_needed = false
     security_group_rules = [
     { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] },
@@ -199,10 +199,10 @@ instances = [
   },
   {
     name              = "Management_server"
-    region            = "us-east-2"
+    region            = "us-east-2" # example ( us-east-2)
     instance_type     = "t2.medium"
     storage_size      = 30
-    key_name          = "<private_pem_key_name>" # example (ap-southeast-1)
+    key_name          = "<private_pem_key_name>" # example (t-singapore)
     elastic_ip_needed = false
     security_group_rules = [
     { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] },
@@ -220,10 +220,10 @@ instances = [
   },
   {
     name              = "IF1"
-    region            = "us-east-2"
+    region            = "us-east-2" # example ( us-east-2)
     instance_type     = "t2.medium"
     storage_size      = 30
-    key_name          = "<private_pem_key_name>" # example (ap-southeast-1)
+    key_name          = "<private_pem_key_name>" # example (t-singapore)
     elastic_ip_needed = false
     security_group_rules = [
     { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] },
@@ -241,10 +241,10 @@ instances = [
   },
   {
     name              = "IF2"
-    region            = "us-east-2"
+    region            = "us-east-2" # example ( us-east-2)
     instance_type     = "t2.medium"
     storage_size      = 30
-    key_name          = "<private_pem_key_name>" # example (ap-southeast-1)
+    key_name          = "<private_pem_key_name>" # example (t-singapore)
     elastic_ip_needed = false
     security_group_rules = [
     { from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ["0.0.0.0/0"] },
