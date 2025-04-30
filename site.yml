@@ -14,6 +14,11 @@
     - name: Set Hostname for Each Instance
       command: sudo hostnamectl set-hostname {{ inventory_hostname }}
 
+    - name: Pause
+      run_once: true
+      pause:
+        seconds: 10
+
     - name: Set servername for Each Instance
       become_user: root
       shell: "/opt/splunk/bin/splunk set servername {{ inventory_hostname }} -auth admin:{{ splunk_admin_password }} --answer-yes"
