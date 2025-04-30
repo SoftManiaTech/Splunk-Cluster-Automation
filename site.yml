@@ -49,6 +49,22 @@
     - name: Restart Splunk
       command: /opt/splunk/bin/splunk restart
 
+    - name: Pause to restarting
+      run_once: true
+      pause:
+        seconds: 20
+    
+    - name: splunk start
+      become: yes
+      become_user: root
+      command:
+        cmd: /opt/splunk/bin/splunk start
+    
+    - name: Pause to starting
+      run_once: true
+      pause:
+        seconds: 15
+
 
 - hosts: ClusterManager
   become: yes
