@@ -11,14 +11,13 @@
       pause:
         seconds: 180
 
-    - name: Update Splunk Admin Password in parallel
-      become_user: splunk
-      shell: "/opt/splunk/bin/splunk edit user admin -password {{ splunk_admin_password }} -role admin -auth admin:SPLUNK-{{ hostvars[inventory_hostname]['instance_id'] }}"
-      args:
-        executable: /bin/bash
-
     - name: Set Hostname for Each Instance
       command: sudo hostnamectl set-hostname {{ inventory_hostname }}
+
+    - name: Pause
+      run_once: true
+      pause:
+        seconds: 10
 
     - name: Set servername for Each Instance
       become_user: root
@@ -54,6 +53,22 @@
   handlers:
     - name: Restart Splunk
       command: /opt/splunk/bin/splunk restart
+
+    - name: Pause to restarting
+      run_once: true
+      pause:
+        seconds: 20
+    
+    - name: splunk start
+      become: yes
+      become_user: root
+      command:
+        cmd: /opt/splunk/bin/splunk start
+    
+    - name: Pause to starting
+      run_once: true
+      pause:
+        seconds: 15
 
 
 - hosts: ClusterManager

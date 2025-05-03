@@ -16,6 +16,17 @@ provider "aws" {
   region     = var.region
 }
 
+# ✅ Get latest RHEL 9.x AMI
+data "aws_ami" "latest_rhel" {
+  most_recent = true
+  owners      = ["309956199498"] # Red Hat official AWS account
+
+  filter {
+    name   = "name"
+    values = ["RHEL-9.?*-x86_64-*"]
+  }
+}
+
 # Security Group Creation 
 resource "aws_security_group" "splunk_sg" {
   for_each = { for idx, instance in var.instances : idx => instance }
@@ -45,7 +56,7 @@ resource "aws_instance" "splunk_server" {
   for_each = { for idx, instance in var.instances : idx => instance }
 
   provider = aws
-  ami           = lookup(var.ami_map, each.value.region, "")
+  ami           = data.aws_ami.latest_rhel.id
   instance_type = each.value.instance_type
   key_name = each.value.key_name
   vpc_security_group_ids = [aws_security_group.splunk_sg[each.key].id]
@@ -54,6 +65,8 @@ resource "aws_instance" "splunk_server" {
   root_block_device {
     volume_size = each.value.storage_size
   }
+
+  user_data = file("splunk-setup.sh")
 
   tags = {
     Name = each.value.name
